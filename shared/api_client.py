@@ -175,30 +175,54 @@ class InformaticaAPIClient:
     # Connections
     # ------------------------------------------------------------------
 
-    def list_connections(self) -> list:
-        url = self._frs_url(
-            "frs/v1/Spaces('SYS')/Documents?filter=(documentType eq 'SAAS_CONNECTION')"
-        )
-        resp = requests.get(url, headers=self._headers())
-        data = self._check(resp)
-        return data.get("value", [])
-
-    def _resolve_di_connection_id(self, connection_id: str) -> str:
-        """Resolve FRS connection ID to DI connection ID via /api/v2/connection."""
-        url = self._frs_url("saas/api/v2/connection")
+    def list_connections(
+        self,
+        connection_id: Optional[str] = None,
+        connection_name: Optional[str] = None,
+    ) -> list:
+        if connection_id:
+            path = f"saas/api/v2/connection/{connection_id}"
+        elif connection_name:
+            encoded = connection_name.replace(" ", "%20")
+            path = f"saas/api/v2/connection/name/{encoded}"
+        else:
+            path = "saas/api/v2/connection"
+        url = self._frs_url(path)
         resp = requests.get(url, headers=self._di_headers())
-        conns = self._check(resp)
-        for c in conns:
-            if c.get("federatedId") == connection_id:
-                return c["id"]
-        return connection_id  # fallback: already a DI ID
+        return self._check(resp)
 
-    def get_connection_objects(self, connection_id: str, search_pattern: str = "") -> list:
-        di_id = self._resolve_di_connection_id(connection_id)
-        url = self._frs_url(f"saas/api/v2/connection/source/{di_id}")
+    def search_connections(
+        self,
+        ui_type: str,
+        agent_id: Optional[str] = None,
+        runtime_environment_id: Optional[str] = None,
+    ) -> list:
+        params: dict = {"uiType": ui_type}
+        if runtime_environment_id:
+            params["runtimeEnvironmentId"] = runtime_environment_id
+        elif agent_id:
+            params["agentId"] = agent_id
+        url = self._frs_url("saas/api/v2/connection/search")
+        resp = requests.get(url, headers=self._di_headers(), params=params)
+        return self._check(resp)
+
+    def get_connection_objects(
+        self,
+        connection_id: str,
+        object_type: str = "source",
+        search_pattern: str = "",
+        max_records_count: int = 200,
+        metadata_only: bool = False,
+    ) -> list:
+        base = f"saas/api/v2/connection/{object_type}/{connection_id}"
+        if metadata_only:
+            base += "/metadata"
+        url = self._frs_url(base)
         params = {}
         if search_pattern:
             params["searchPattern"] = search_pattern
+        if not metadata_only:
+            params["maxRecordsCount"] = max_records_count
         resp = requests.get(url, headers=self._di_headers(), params=params)
         return self._check(resp)
 
@@ -235,32 +259,54 @@ class InformaticaAPIClient:
 
     def list_projects(self, name: Optional[str] = None) -> list:
         if name:
-            url = self._frs_url(
-                f"frs/v1/Projects?$filter=(name eq '{name}')"
-            )
+            url = self._v3_url(f"public/core/v3/projects/name/{name}")
         else:
-            url = self._frs_url("frs/v1/Projects")
-        resp = requests.get(url, headers=self._headers())
+            url = self._v3_url("public/core/v3/projects")
+        resp = requests.get(url, headers=self._v3_headers())
         data = self._check(resp)
-        return data.get("value", [])
+        if isinstance(data, list):
+            return data
+        return data.get("projects", data.get("value", [data] if data else []))
 
     def create_project(self, name: str, description: str = "") -> dict:
-        url = self._frs_url("frs/v1/Project")
+        url = self._v3_url("public/core/v3/projects")
         resp = requests.post(
-            url, headers=self._headers(), json={"name": name, "description": description}
+            url, headers=self._v3_headers(), json={"name": name, "description": description}
         )
         return self._check(resp)
 
-    def list_folders(self, project_id: str) -> list:
-        url = self._frs_url(f"frs/v1/Projects('{project_id}')/Folders")
-        resp = requests.get(url, headers=self._headers())
+    def list_folders(
+        self,
+        project_id: Optional[str] = None,
+        project_name: Optional[str] = None,
+    ) -> list:
+        if project_id:
+            url = self._v3_url(f"public/core/v3/projects/{project_id}/folders")
+        elif project_name:
+            url = self._v3_url(f"public/core/v3/projects/name/{project_name}/folders")
+        else:
+            raise ValueError("project_id or project_name required")
+        resp = requests.get(url, headers=self._v3_headers())
         data = self._check(resp)
-        return data.get("value", [])
+        if isinstance(data, list):
+            return data
+        return data.get("folders", data.get("value", []))
 
-    def create_folder(self, project_id: str, name: str, description: str = "") -> dict:
-        url = self._frs_url(f"frs/v1/Projects('{project_id}')/Folders")
+    def create_folder(
+        self,
+        name: str,
+        description: str = "",
+        project_id: Optional[str] = None,
+        project_name: Optional[str] = None,
+    ) -> dict:
+        if project_id:
+            url = self._v3_url(f"public/core/v3/projects/{project_id}/folders")
+        elif project_name:
+            url = self._v3_url(f"public/core/v3/projects/name/{project_name}/folders")
+        else:
+            url = self._v3_url("public/core/v3/folders")
         resp = requests.post(
-            url, headers=self._headers(), json={"name": name, "description": description}
+            url, headers=self._v3_headers(), json={"name": name, "description": description}
         )
         return self._check(resp)
 
@@ -538,18 +584,18 @@ class InformaticaAPIClient:
             params["offset"] = offset
         if row_limit is not None:
             params["rowLimit"] = row_limit
-        path = f"api/v2/activity/activityLog/{log_id}" if log_id else "api/v2/activity/activityLog"
+        path = f"saas/api/v2/activity/activityLog/{log_id}" if log_id else "saas/api/v2/activity/activityLog"
         url = self._frs_url(path)
         resp = requests.get(url, headers=self._headers(), params=params)
         return self._check(resp)
 
     def get_activity_monitor(self) -> list:
-        url = self._frs_url("api/v2/activity/activityMonitor")
+        url = self._frs_url("saas/api/v2/activity/activityMonitor")
         resp = requests.get(url, headers=self._headers())
         return self._check(resp)
 
     def get_error_log(self, log_id: str) -> str:
-        url = self._frs_url(f"api/v2/activity/errorLog/{log_id}")
+        url = self._frs_url(f"saas/api/v2/activity/errorLog/{log_id}")
         resp = requests.get(url, headers=self._headers())
         return resp.text
 
@@ -558,7 +604,7 @@ class InformaticaAPIClient:
     # ------------------------------------------------------------------
 
     def get_audit_log(self, batch_id: int = 0, batch_size: int = 200) -> list:
-        url = self._frs_url("api/v2/auditlog")
+        url = self._frs_url("saas/api/v2/auditlog")
         params = {"batchId": batch_id, "batchSize": batch_size}
         resp = requests.get(url, headers=self._headers(), params=params)
         return self._check(resp)
@@ -576,9 +622,16 @@ class InformaticaAPIClient:
         return self._check(resp)
 
     def get_user(self, user_id: str) -> dict:
-        url = self._v3_url(f"public/core/v3/users/{user_id}")
-        resp = requests.get(url, headers=self._v3_headers())
-        return self._check(resp)
+        # IDMC v3 has no GET /users/{id}; use q filter by userId or userName (p.328)
+        url = self._v3_url("public/core/v3/users")
+        # Heuristic: IDs are alphanumeric 22-char strings; usernames contain @ or .
+        field = "userName" if ("@" in user_id or "." in user_id) else "userId"
+        params = {"q": f'{field}=="{user_id}"', "limit": 1}
+        resp = requests.get(url, headers=self._v3_headers(), params=params)
+        result = self._check(resp)
+        if isinstance(result, list) and result:
+            return result[0]
+        raise InformaticaAPIError(f"User not found: {user_id}")
 
     def create_user(self, payload: dict) -> dict:
         url = self._v3_url("public/core/v3/users")
@@ -600,9 +653,9 @@ class InformaticaAPIClient:
         resp = requests.delete(url, headers=self._v3_headers())
         return self._check(resp)
 
-    def change_password(self, username: str, old_password: str, new_password: str) -> dict:
+    def change_password(self, old_password: str, new_password: str) -> dict:
         url = self._v3_url("public/core/v3/Users/ChangePassword")
-        payload = {"username": username, "oldPassword": old_password, "newPassword": new_password}
+        payload = {"oldPassword": old_password, "newPassword": new_password}
         resp = requests.post(url, headers=self._v3_headers(), json=payload)
         return self._check(resp)
 
@@ -610,50 +663,71 @@ class InformaticaAPIClient:
     # Admin – Roles (v3)
     # ------------------------------------------------------------------
 
-    def get_roles(self, query: Optional[str] = None, expand: Optional[str] = None) -> list:
+    def get_roles(self, query: Optional[str] = None, expand: Optional[str] = None, limit: Optional[int] = None, skip: Optional[int] = None) -> list:
         url = self._v3_url("public/core/v3/roles")
         params: dict = {}
         if query:
             params["q"] = query
         if expand:
             params["expand"] = expand
+        if limit is not None:
+            params["limit"] = limit
+        if skip is not None:
+            params["skip"] = skip
         resp = requests.get(url, headers=self._v3_headers(), params=params)
         return self._check(resp)
+
+    def _role_path(self, role_id: Optional[str] = None, role_name: Optional[str] = None) -> str:
+        if role_name:
+            return f"public/core/v3/roles/name/{role_name}"
+        return f"public/core/v3/roles/{role_id}"
 
     def create_role(self, name: str, description: str, privileges: list) -> dict:
         url = self._v3_url("public/core/v3/roles")
         resp = requests.post(url, headers=self._v3_headers(), json={"name": name, "description": description, "privileges": privileges})
         return self._check(resp)
 
-    def update_role_privileges(self, role_id: str, privileges: list, action: str = "addPrivileges") -> dict:
-        url = self._v3_url(f"public/core/v3/roles/{role_id}/{action}")
+    def update_role_privileges(self, privileges: list, action: str = "addPrivileges", role_id: Optional[str] = None, role_name: Optional[str] = None) -> dict:
+        url = self._v3_url(f"{self._role_path(role_id, role_name)}/{action}")
         resp = requests.put(url, headers=self._v3_headers(), json={"privileges": privileges})
         return self._check(resp)
 
-    def delete_role(self, role_id: str) -> dict:
-        url = self._v3_url(f"public/core/v3/roles/{role_id}")
+    def delete_role(self, role_id: Optional[str] = None, role_name: Optional[str] = None) -> dict:
+        url = self._v3_url(self._role_path(role_id, role_name))
         resp = requests.delete(url, headers=self._v3_headers())
         return self._check(resp)
 
-    def get_privileges(self) -> list:
+    def get_privileges(self, query: Optional[str] = None) -> list:
         url = self._v3_url("public/core/v3/privileges")
-        resp = requests.get(url, headers=self._v3_headers())
+        params: dict = {}
+        if query:
+            params["q"] = query
+        resp = requests.get(url, headers=self._v3_headers(), params=params)
         return self._check(resp)
 
     # ------------------------------------------------------------------
     # Admin – User Groups (v3)
     # ------------------------------------------------------------------
 
-    def get_user_groups(self, query: Optional[str] = None) -> list:
+    def _group_path(self, group_id: Optional[str] = None, group_name: Optional[str] = None) -> str:
+        if group_name:
+            return f"public/core/v3/userGroups/name/{group_name}"
+        return f"public/core/v3/userGroups/{group_id}"
+
+    def get_user_groups(self, query: Optional[str] = None, limit: Optional[int] = None, skip: Optional[int] = None) -> list:
         url = self._v3_url("public/core/v3/userGroups")
         params = {}
         if query:
             params["q"] = query
+        if limit is not None:
+            params["limit"] = limit
+        if skip is not None:
+            params["skip"] = skip
         resp = requests.get(url, headers=self._v3_headers(), params=params)
         return self._check(resp)
 
-    def get_user_group(self, group_id: str) -> dict:
-        url = self._v3_url(f"public/core/v3/userGroups/{group_id}")
+    def get_user_group(self, group_id: Optional[str] = None, group_name: Optional[str] = None) -> dict:
+        url = self._v3_url(self._group_path(group_id, group_name))
         resp = requests.get(url, headers=self._v3_headers())
         return self._check(resp)
 
@@ -667,18 +741,18 @@ class InformaticaAPIClient:
         resp = requests.post(url, headers=self._v3_headers(), json=payload)
         return self._check(resp)
 
-    def update_user_group(self, group_id: str, users: list, action: str = "addUsers") -> dict:
-        url = self._v3_url(f"public/core/v3/userGroups/{group_id}/{action}")
+    def update_user_group(self, users: list, action: str = "addUsers", group_id: Optional[str] = None, group_name: Optional[str] = None) -> dict:
+        url = self._v3_url(f"{self._group_path(group_id, group_name)}/{action}")
         resp = requests.put(url, headers=self._v3_headers(), json={"users": users})
         return self._check(resp)
 
-    def update_user_group_roles(self, group_id: str, roles: list, action: str = "addRoles") -> dict:
-        url = self._v3_url(f"public/core/v3/userGroups/{group_id}/{action}")
+    def update_user_group_roles(self, roles: list, action: str = "addRoles", group_id: Optional[str] = None, group_name: Optional[str] = None) -> dict:
+        url = self._v3_url(f"{self._group_path(group_id, group_name)}/{action}")
         resp = requests.put(url, headers=self._v3_headers(), json={"roles": roles})
         return self._check(resp)
 
-    def delete_user_group(self, group_id: str) -> dict:
-        url = self._v3_url(f"public/core/v3/userGroups/{group_id}")
+    def delete_user_group(self, group_id: Optional[str] = None, group_name: Optional[str] = None) -> dict:
+        url = self._v3_url(self._group_path(group_id, group_name))
         resp = requests.delete(url, headers=self._v3_headers())
         return self._check(resp)
 
@@ -716,16 +790,51 @@ class InformaticaAPIClient:
     # Admin – Runtime Environments / Secure Agents (v2)
     # ------------------------------------------------------------------
 
-    def get_runtime_environments(self, env_id: Optional[str] = None) -> list:
-        path = f"api/v2/runtimeEnvironment/{env_id}" if env_id else "api/v2/runtimeEnvironment"
+    def get_runtime_environments(
+        self,
+        env_id: Optional[str] = None,
+        env_name: Optional[str] = None,
+    ) -> list:
+        if env_id:
+            path = f"saas/api/v2/runtimeEnvironment/{env_id}"
+        elif env_name:
+            encoded = env_name.replace(" ", "%20")
+            path = f"saas/api/v2/runtimeEnvironment/name/{encoded}"
+        else:
+            path = "saas/api/v2/runtimeEnvironment"
         url = self._frs_url(path)
-        resp = requests.get(url, headers=self._headers())
+        resp = requests.get(url, headers=self._di_headers())
         return self._check(resp)
 
-    def get_secure_agents(self, agent_id: Optional[str] = None) -> list:
-        path = f"api/v2/agent/{agent_id}" if agent_id else "api/v2/agent"
+    def get_secure_agents(
+        self,
+        agent_id: Optional[str] = None,
+        agent_name: Optional[str] = None,
+        include_unassigned_only: bool = False,
+        basic_info: bool = False,
+        include_service_details: bool = False,
+        only_status: bool = True,
+    ) -> list:
+        if include_service_details:
+            # /api/v2/agent/details or /api/v2/agent/details/<id>
+            path = f"saas/api/v2/agent/details/{agent_id}" if agent_id else "saas/api/v2/agent/details"
+            params = {} if only_status else {"onlyStatus": "false"}
+        elif agent_id:
+            path = f"saas/api/v2/agent/{agent_id}"
+            params = {}
+        elif agent_name:
+            encoded = agent_name.replace(" ", "%20")
+            path = f"saas/api/v2/agent/name/{encoded}"
+            params = {}
+        else:
+            path = "saas/api/v2/agent"
+            params = {}
+            if include_unassigned_only:
+                params["includeUnassignedOnly"] = "true"
+            if basic_info:
+                params["basicInfo"] = "true"
         url = self._frs_url(path)
-        resp = requests.get(url, headers=self._headers())
+        resp = requests.get(url, headers=self._di_headers(), params=params)
         return self._check(resp)
 
     # ------------------------------------------------------------------
@@ -733,8 +842,8 @@ class InformaticaAPIClient:
     # ------------------------------------------------------------------
 
     def get_organization(self) -> dict:
-        url = self._frs_url("api/v2/orgs")
-        resp = requests.get(url, headers=self._headers())
+        url = self._frs_url("saas/api/v2/org")
+        resp = requests.get(url, headers=self._di_headers())
         return self._check(resp)
 
     # ------------------------------------------------------------------
@@ -750,24 +859,71 @@ class InformaticaAPIClient:
     # Admin – Object Permissions (v3)
     # ------------------------------------------------------------------
 
-    def get_object_permissions(self, object_id: str) -> dict:
-        url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions")
+    def get_object_permissions(self, object_id: str, acl_id: Optional[str] = None) -> dict:
+        if acl_id:
+            url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions/{acl_id}")
+        else:
+            url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions")
         resp = requests.get(url, headers=self._v3_headers())
         return self._check(resp)
 
-    def create_object_permission(self, object_id: str, payload: dict) -> dict:
+    def create_object_permission(
+        self,
+        object_id: str,
+        principal_type: str,
+        principal_name: str,
+        read: bool,
+        update: bool,
+        delete: bool,
+        execute: bool,
+        change_permission: bool,
+    ) -> dict:
         url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions")
+        payload = {
+            "principal": {"type": principal_type, "name": principal_name},
+            "permissions": {
+                "read": read,
+                "update": update,
+                "delete": delete,
+                "execute": execute,
+                "changePermission": change_permission,
+            },
+        }
         resp = requests.post(url, headers=self._v3_headers(), json=payload)
         return self._check(resp)
 
-    def update_object_permission(self, object_id: str, permission_id: str, payload: dict) -> dict:
-        url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions/{permission_id}")
+    def update_object_permission(
+        self,
+        object_id: str,
+        acl_id: str,
+        principal_type: str,
+        principal_name: str,
+        read: bool,
+        update: bool,
+        delete: bool,
+        execute: bool,
+        change_permission: bool,
+    ) -> dict:
+        url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions/{acl_id}")
+        payload = {
+            "principal": {"type": principal_type, "name": principal_name},
+            "permissions": {
+                "read": read,
+                "update": update,
+                "delete": delete,
+                "execute": execute,
+                "changePermission": change_permission,
+            },
+        }
         resp = requests.put(url, headers=self._v3_headers(), json=payload)
         return self._check(resp)
 
-    def delete_object_permission(self, object_id: str, payload: dict) -> dict:
-        url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions")
-        resp = requests.delete(url, headers=self._v3_headers(), json=payload)
+    def delete_object_permission(self, object_id: str, acl_id: Optional[str] = None) -> dict:
+        if acl_id:
+            url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions/{acl_id}")
+        else:
+            url = self._v3_url(f"public/core/v3/objects/{object_id}/permissions")
+        resp = requests.delete(url, headers=self._v3_headers())
         return self._check(resp)
 
     # ------------------------------------------------------------------
@@ -775,7 +931,7 @@ class InformaticaAPIClient:
     # ------------------------------------------------------------------
 
     def start_di_job(self, payload: dict) -> dict:
-        url = self._frs_url("api/v2/job")
+        url = self._frs_url("saas/api/v2/job")
         resp = requests.post(url, headers=self._headers(), json=payload)
         return self._check(resp)
 
@@ -788,7 +944,7 @@ class InformaticaAPIClient:
         return self._check(resp)
 
     def get_di_activity_log(self, log_id: str) -> dict:
-        url = self._frs_url(f"api/v2/activity/activityLog/{log_id}")
+        url = self._frs_url(f"saas/api/v2/activity/activityLog/{log_id}")
         resp = requests.get(url, headers=self._headers())
         return self._check(resp)
 
@@ -797,7 +953,7 @@ class InformaticaAPIClient:
     # ------------------------------------------------------------------
 
     def get_server_time(self) -> dict:
-        url = self._frs_url("api/v2/server/serverTime")
+        url = self._frs_url("saas/api/v2/server/serverTime")
         resp = requests.get(url, headers=self._headers())
         return self._check(resp)
 
@@ -806,13 +962,25 @@ class InformaticaAPIClient:
     # ------------------------------------------------------------------
 
     def logout(self) -> dict:
-        url = self._frs_url("api/v2/user/logout")
-        resp = requests.post(url, headers=self._headers(), json={})
+        # v2 logout — uses icSessionId header per spec
+        v2_url = self._frs_url("saas/api/v2/user/logout")
+        requests.post(v2_url, headers=self._di_headers(), json={})
+
+        # v3 logout — uses INFA-SESSION-ID header per spec
+        v3_result = {}
+        if self.session.v3_session_id:
+            v3_url = f"https://dm-{self.session.pod_region}.informaticacloud.com/saas/public/core/v3/logout"
+            v3_resp = requests.post(v3_url, headers=self._v3_headers())
+            try:
+                v3_result = self._check(v3_resp)
+            except Exception:
+                pass
+
         self.session.session_id = ""
         self.session.v3_session_id = ""
         self.session.base_url = ""
         self.session.frs_base_url = ""
-        return self._check(resp)
+        return {"status": "logged_out", "v3": v3_result or {"status": "success"}}
 
     # ------------------------------------------------------------------
     # Platform v2 – Tasks
@@ -941,6 +1109,26 @@ class InformaticaAPIClient:
     def update_runtime_environment_selections(self, env_id: str, payload: dict) -> dict:
         url = self._frs_url(f"saas/api/v2/runtimeEnvironment/{env_id}/selections")
         resp = requests.put(url, headers=self._di_headers(), json=payload)
+        return self._check(resp)
+
+    def get_runtime_environment_configs(
+        self, env_id: str, platform: str = "linux64", details: bool = False
+    ) -> dict:
+        endpoint = "configs/details" if details else "configs"
+        url = self._frs_url(f"saas/api/v2/runtimeEnvironment/{env_id}/{endpoint}/{platform}")
+        resp = requests.get(url, headers=self._di_headers())
+        return self._check(resp)
+
+    def update_runtime_environment_configs(
+        self, env_id: str, platform: str = "linux64", payload: dict = None
+    ) -> dict:
+        url = self._frs_url(f"saas/api/v2/runtimeEnvironment/{env_id}/configs/{platform}")
+        resp = requests.put(url, headers=self._di_headers(), json=payload or {})
+        return self._check(resp)
+
+    def delete_runtime_environment_configs(self, env_id: str) -> dict:
+        url = self._frs_url(f"saas/api/v2/runtimeEnvironment/{env_id}/configs")
+        resp = requests.delete(url, headers=self._di_headers())
         return self._check(resp)
 
     # ------------------------------------------------------------------
@@ -1146,15 +1334,21 @@ class InformaticaAPIClient:
 
     def update_folder(
         self,
-        folder_id: str,
+        folder_id: Optional[str] = None,
+        folder_name: Optional[str] = None,
         name: Optional[str] = None,
         description: Optional[str] = None,
         project_id: Optional[str] = None,
+        project_name: Optional[str] = None,
     ) -> dict:
-        if project_id:
+        if project_id and folder_id:
             url = self._v3_url(f"public/core/v3/projects/{project_id}/folders/{folder_id}")
-        else:
+        elif project_name and folder_name:
+            url = self._v3_url(f"public/core/v3/projects/name/{project_name}/folders/name/{folder_name}")
+        elif folder_id:
             url = self._v3_url(f"public/core/v3/folders/{folder_id}")
+        else:
+            raise ValueError("Provide (project_id + folder_id) or (project_name + folder_name) or folder_id")
         payload: dict = {}
         if name:
             payload["name"] = name
@@ -1163,11 +1357,21 @@ class InformaticaAPIClient:
         resp = requests.patch(url, headers=self._v3_headers(), json=payload)
         return self._check(resp)
 
-    def delete_folder(self, folder_id: str, project_id: Optional[str] = None) -> dict:
-        if project_id:
+    def delete_folder(
+        self,
+        folder_id: Optional[str] = None,
+        folder_name: Optional[str] = None,
+        project_id: Optional[str] = None,
+        project_name: Optional[str] = None,
+    ) -> dict:
+        if project_id and folder_id:
             url = self._v3_url(f"public/core/v3/projects/{project_id}/folders/{folder_id}")
+        elif project_name and folder_name:
+            url = self._v3_url(f"public/core/v3/projects/name/{project_name}/folders/name/{folder_name}")
+        elif folder_id:
+            url = self._v3_url(f"public/core/v3/folders/{folder_id}")
         else:
-            url = self._v3_url(f"public/core/v3/projects/{folder_id}")
+            raise ValueError("Provide (project_id + folder_id) or (project_name + folder_name) or folder_id")
         resp = requests.delete(url, headers=self._v3_headers())
         return self._check(resp)
 
@@ -1626,9 +1830,12 @@ class InformaticaAPIClient:
         resp = requests.post(url, headers=self._di_headers(), json=payload)
         return self._check(resp)
 
-    def update_connection(self, connection_id: str, payload: dict) -> dict:
+    def update_connection(self, connection_id: str, payload: dict, partial: bool = False) -> dict:
         url = self._frs_url(f"saas/api/v2/connection/{connection_id}")
-        resp = requests.post(url, headers=self._di_headers(), json=payload)
+        headers = dict(self._di_headers())
+        if partial:
+            headers["Update-Mode"] = "PARTIAL"
+        resp = requests.post(url, headers=headers, json=payload)
         return self._check(resp)
 
     def delete_connection(self, connection_id: str) -> dict:

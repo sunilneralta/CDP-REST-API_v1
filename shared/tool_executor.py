@@ -189,11 +189,25 @@ class ToolExecutor:
 
         # ---- Connections ----
         if tool_name == "idmc_list_connections":
-            return _paginate(c.list_connections(), inp)
+            return c.list_connections(
+                inp.get("connection_id"),
+                inp.get("connection_name"),
+            )
+
+        if tool_name == "idmc_search_connections":
+            return c.search_connections(
+                inp["ui_type"],
+                inp.get("agent_id"),
+                inp.get("runtime_environment_id"),
+            )
 
         if tool_name == "idmc_get_connection_objects":
             return c.get_connection_objects(
-                inp["connection_id"], inp.get("search_pattern", "")
+                inp["connection_id"],
+                inp.get("object_type", "source"),
+                inp.get("search_pattern", ""),
+                inp.get("max_records_count", 200),
+                inp.get("metadata_only", False),
             )
 
         if tool_name == "idmc_get_object_fields":
@@ -211,11 +225,17 @@ class ToolExecutor:
             return c.create_project(inp["name"], inp.get("description", ""))
 
         if tool_name == "idmc_list_folders":
-            return c.list_folders(inp["project_id"])
+            return c.list_folders(
+                project_id=inp.get("project_id"),
+                project_name=inp.get("project_name"),
+            )
 
         if tool_name == "idmc_create_folder":
             return c.create_folder(
-                inp["project_id"], inp["name"], inp.get("description", "")
+                name=inp["name"],
+                description=inp.get("description", ""),
+                project_id=inp.get("project_id"),
+                project_name=inp.get("project_name"),
             )
 
         # ---- Profiles ----
@@ -450,14 +470,29 @@ class ToolExecutor:
             return c.get_user(inp["user_id"])
 
         if tool_name == "idmc_create_user":
-            payload: dict = {"name": inp["name"]}
-            for field in ("first_name", "last_name", "title", "phone", "emails", "timezone"):
-                if inp.get(field):
-                    key = "firstName" if field == "first_name" else \
-                          "lastName" if field == "last_name" else field
-                    payload[key] = inp[field]
+            payload: dict = {
+                "name":      inp["name"],
+                "firstName": inp["first_name"],
+                "lastName":  inp["last_name"],
+                "email":     inp["email"],
+            }
+            for src, dst in (
+                ("password",             "password"),
+                ("title",                "title"),
+                ("phone",                "phone"),
+                ("timezone",             "timezone"),
+                ("description",          "description"),
+                ("authentication",       "authentication"),
+                ("force_password_change","forcePasswordChange"),
+                ("max_login_attempts",   "maxLoginAttempts"),
+            ):
+                if inp.get(src) is not None:
+                    payload[dst] = inp[src]
+            # v3 expects arrays of ID strings, not name-objects
             if inp.get("roles"):
-                payload["roles"] = [{"name": r} for r in inp["roles"]]
+                payload["roles"] = inp["roles"]
+            if inp.get("groups"):
+                payload["groups"] = inp["groups"]
             return c.create_user(payload)
 
         if tool_name == "idmc_add_user_roles":
@@ -480,33 +515,56 @@ class ToolExecutor:
             new_pw = inp.get("new_password") or os.environ.get("IDMC_NEW_PASSWORD", "")
             if not old_pw or not new_pw:
                 return {"error": "Passwords required. Pass old_password/new_password or set IDMC_OLD_PASSWORD/IDMC_NEW_PASSWORD env vars."}
-            return c.change_password(inp["username"], old_pw, new_pw)
+            return c.change_password(old_pw, new_pw)
 
         # ---- Admin – Roles ----
         if tool_name == "idmc_get_roles":
-            return _paginate(c.get_roles(inp.get("query"), inp.get("expand")), inp)
+            return c.get_roles(
+                query=inp.get("query"),
+                expand=inp.get("expand"),
+                limit=inp.get("limit"),
+                skip=inp.get("offset"),
+            )
 
         if tool_name == "idmc_get_privileges":
-            return c.get_privileges()
+            return c.get_privileges(query=inp.get("query"))
 
         if tool_name == "idmc_create_role":
             return c.create_role(inp["name"], inp.get("description", ""), inp["privileges"])
 
         if tool_name == "idmc_add_role_privileges":
-            return c.update_role_privileges(inp["role_id"], inp["privileges"], "addPrivileges")
+            return c.update_role_privileges(
+                inp["privileges"], "addPrivileges",
+                role_id=inp.get("role_id"),
+                role_name=inp.get("role_name"),
+            )
 
         if tool_name == "idmc_remove_role_privileges":
-            return c.update_role_privileges(inp["role_id"], inp["privileges"], "removePrivileges")
+            return c.update_role_privileges(
+                inp["privileges"], "removePrivileges",
+                role_id=inp.get("role_id"),
+                role_name=inp.get("role_name"),
+            )
 
         if tool_name == "idmc_delete_role":
-            return c.delete_role(inp["role_id"])
+            return c.delete_role(
+                role_id=inp.get("role_id"),
+                role_name=inp.get("role_name"),
+            )
 
         # ---- Admin – User Groups ----
         if tool_name == "idmc_get_user_groups":
-            return _paginate(c.get_user_groups(inp.get("query")), inp)
+            return c.get_user_groups(
+                query=inp.get("query"),
+                limit=inp.get("limit"),
+                skip=inp.get("offset"),
+            )
 
         if tool_name == "idmc_get_user_group":
-            return c.get_user_group(inp["group_id"])
+            return c.get_user_group(
+                group_id=inp.get("group_id"),
+                group_name=inp.get("group_name"),
+            )
 
         if tool_name == "idmc_create_user_group":
             return c.create_user_group(
@@ -517,19 +575,38 @@ class ToolExecutor:
             )
 
         if tool_name == "idmc_add_users_to_group":
-            return c.update_user_group(inp["group_id"], inp["users"], "addUsers")
+            return c.update_user_group(
+                inp["users"], "addUsers",
+                group_id=inp.get("group_id"),
+                group_name=inp.get("group_name"),
+            )
 
         if tool_name == "idmc_remove_users_from_group":
-            return c.update_user_group(inp["group_id"], inp["users"], "removeUsers")
+            return c.update_user_group(
+                inp["users"], "removeUsers",
+                group_id=inp.get("group_id"),
+                group_name=inp.get("group_name"),
+            )
 
         if tool_name == "idmc_add_roles_to_group":
-            return c.update_user_group_roles(inp["group_id"], inp["roles"], "addRoles")
+            return c.update_user_group_roles(
+                inp["roles"], "addRoles",
+                group_id=inp.get("group_id"),
+                group_name=inp.get("group_name"),
+            )
 
         if tool_name == "idmc_remove_roles_from_group":
-            return c.update_user_group_roles(inp["group_id"], inp["roles"], "removeRoles")
+            return c.update_user_group_roles(
+                inp["roles"], "removeRoles",
+                group_id=inp.get("group_id"),
+                group_name=inp.get("group_name"),
+            )
 
         if tool_name == "idmc_delete_user_group":
-            return c.delete_user_group(inp["group_id"])
+            return c.delete_user_group(
+                group_id=inp.get("group_id"),
+                group_name=inp.get("group_name"),
+            )
 
         # ---- Admin – Schedules ----
         if tool_name == "idmc_get_schedules":
@@ -558,10 +635,17 @@ class ToolExecutor:
 
         # ---- Admin – Runtime Environments & Secure Agents ----
         if tool_name == "idmc_get_runtime_environments":
-            return c.get_runtime_environments(inp.get("env_id"))
+            return c.get_runtime_environments(inp.get("env_id"), inp.get("env_name"))
 
         if tool_name == "idmc_get_secure_agents":
-            return c.get_secure_agents(inp.get("agent_id"))
+            return c.get_secure_agents(
+                agent_id=inp.get("agent_id"),
+                agent_name=inp.get("agent_name"),
+                include_unassigned_only=inp.get("include_unassigned_only", False),
+                basic_info=inp.get("basic_info", False),
+                include_service_details=inp.get("include_service_details", False),
+                only_status=inp.get("only_status", True),
+            )
 
         # ---- Admin – Organisation ----
         if tool_name == "idmc_get_organization":
@@ -573,13 +657,22 @@ class ToolExecutor:
 
         # ---- Admin – Object Permissions ----
         if tool_name == "idmc_get_object_permissions":
-            return c.get_object_permissions(inp["object_id"])
+            return c.get_object_permissions(inp["object_id"], inp.get("acl_id"))
 
         if tool_name == "idmc_create_object_permission":
-            return c.create_object_permission(inp["object_id"], inp["payload"])
+            return c.create_object_permission(
+                object_id=inp["object_id"],
+                principal_type=inp["principal_type"],
+                principal_name=inp["principal_name"],
+                read=inp["read"],
+                update=inp["update"],
+                delete=inp["delete"],
+                execute=inp["execute"],
+                change_permission=inp["change_permission"],
+            )
 
         if tool_name == "idmc_delete_object_permission":
-            return c.delete_object_permission(inp["object_id"], inp["payload"])
+            return c.delete_object_permission(inp["object_id"], inp.get("acl_id"))
 
         # ---- Admin – DI Jobs ----
         if tool_name == "idmc_start_di_job":
@@ -652,28 +745,47 @@ class ToolExecutor:
             return c.delete_sub_organization(inp["org_id"])
 
         if tool_name == "idmc_create_sub_organization":
-            payload = {
-                "@type": "registration",
-                "org": {
-                    "@type": "org",
-                    "name":      inp["org_name"],
-                    "address1":  inp["org_address"],
-                    "city":      inp["org_city"],
-                    "country":   inp["org_country"],
-                    "employees": inp["org_employees"],
-                },
-                "user": {
-                    "@type":     "user",
-                    "name":      inp["admin_username"],
-                    "password":  inp["admin_password"],
-                    "firstName": inp["admin_first_name"],
-                    "lastName":  inp["admin_last_name"],
-                    "title":     inp["admin_title"],
-                    "phone":     inp["admin_phone"],
-                    "emails":    inp["admin_email"],
-                },
-                "sendEmail": True,
+            org_obj: dict = {
+                "@type":     "org",
+                "name":      inp["org_name"],
+                "address1":  inp["org_address"],
+                "city":      inp["org_city"],
+                "country":   inp["org_country"],
+                "employees": inp["org_employees"],
             }
+            if inp.get("org_address2"):    org_obj["address2"]  = inp["org_address2"]
+            if inp.get("org_address3"):    org_obj["address3"]  = inp["org_address3"]
+            if inp.get("org_state"):       org_obj["state"]     = inp["org_state"]
+            if inp.get("org_zipcode"):     org_obj["zipcode"]   = inp["org_zipcode"]
+            if inp.get("org_timezone"):    org_obj["timezone"]  = inp["org_timezone"]
+            if inp.get("org_offer_code"):  org_obj["offerCode"] = inp["org_offer_code"]
+
+            user_obj: dict = {
+                "@type":     "user",
+                "name":      inp["admin_username"],
+                "password":  inp["admin_password"],
+                "firstName": inp["admin_first_name"],
+                "lastName":  inp["admin_last_name"],
+                "title":     inp["admin_title"],
+                "phone":     inp["admin_phone"],
+                "emails":    inp["admin_email"],
+            }
+            if inp.get("admin_timezone"):          user_obj["timezone"]            = inp["admin_timezone"]
+            if inp.get("admin_security_question"): user_obj["securityQuestion"]    = inp["admin_security_question"]
+            if inp.get("admin_security_answer"):   user_obj["securityAnswer"]      = inp["admin_security_answer"]
+            if inp.get("admin_force_change_password") is not None:
+                user_obj["forceChangePassword"] = inp["admin_force_change_password"]
+            if inp.get("admin_opt_out_of_emails") is not None:
+                user_obj["optOutOfEmails"] = inp["admin_opt_out_of_emails"]
+
+            payload = {
+                "@type":    "registration",
+                "org":      org_obj,
+                "user":     user_obj,
+                "sendEmail": inp.get("send_email", True),
+            }
+            if inp.get("registration_code"):
+                payload["registrationCode"] = inp["registration_code"]
             return c.create_sub_organization(payload)
 
         # ---- Platform v2 – Secure Agent management ----
@@ -708,6 +820,23 @@ class ToolExecutor:
 
         if tool_name == "idmc_update_runtime_environment_selections":
             return c.update_runtime_environment_selections(inp["env_id"], inp["payload"])
+
+        if tool_name == "idmc_get_runtime_environment_configs":
+            return c.get_runtime_environment_configs(
+                inp["env_id"],
+                inp.get("platform", "linux64"),
+                inp.get("details", False),
+            )
+
+        if tool_name == "idmc_update_runtime_environment_configs":
+            return c.update_runtime_environment_configs(
+                inp["env_id"],
+                inp.get("platform", "linux64"),
+                inp["payload"],
+            )
+
+        if tool_name == "idmc_delete_runtime_environment_configs":
+            return c.delete_runtime_environment_configs(inp["env_id"])
 
         # ---- Platform v2 – Session logs & validation ----
         if tool_name == "idmc_get_session_log":
@@ -765,7 +894,15 @@ class ToolExecutor:
         # ---- Platform v3 – Object Permissions (update + check) ----
         if tool_name == "idmc_update_object_permission":
             return c.update_object_permission(
-                inp["object_id"], inp["permission_id"], inp["payload"]
+                object_id=inp["object_id"],
+                acl_id=inp["acl_id"],
+                principal_type=inp["principal_type"],
+                principal_name=inp["principal_name"],
+                read=inp["read"],
+                update=inp["update"],
+                delete=inp["delete"],
+                execute=inp["execute"],
+                change_permission=inp["change_permission"],
             )
 
         if tool_name == "idmc_check_object_access":
@@ -787,15 +924,20 @@ class ToolExecutor:
 
         if tool_name == "idmc_update_folder":
             return c.update_folder(
-                folder_id=inp["folder_id"],
+                folder_id=inp.get("folder_id"),
+                folder_name=inp.get("folder_name"),
                 name=inp.get("name"),
                 description=inp.get("description"),
                 project_id=inp.get("project_id"),
+                project_name=inp.get("project_name"),
             )
 
         if tool_name == "idmc_delete_folder":
             return c.delete_folder(
-                folder_id=inp["folder_id"], project_id=inp.get("project_id")
+                folder_id=inp.get("folder_id"),
+                folder_name=inp.get("folder_name"),
+                project_id=inp.get("project_id"),
+                project_name=inp.get("project_name"),
             )
 
         # ---- Platform v3 – Export / Import ----
@@ -1084,17 +1226,27 @@ class ToolExecutor:
                 "type": inp["type"],
                 "description": inp.get("description", ""),
             }
+            if inp.get("agent_id"):
+                payload["agentId"] = inp["agent_id"]
             if inp.get("runtime_environment_id"):
                 payload["runtimeEnvironmentId"] = inp["runtime_environment_id"]
-            for field in ("username", "password", "host", "port", "database", "schema", "service_url"):
-                if inp.get(field):
-                    payload[field] = inp[field]
-            if inp.get("extra_properties"):
-                payload.update(inp["extra_properties"])
+            field_map = {
+                "username": "username", "password": "password", "host": "host",
+                "port": "port", "database": "database", "schema": "schema",
+                "service_url": "serviceUrl", "security_token": "securityToken",
+                "authentication_type": "authenticationType", "codepage": "codepage",
+            }
+            for py_key, api_key in field_map.items():
+                if inp.get(py_key) is not None:
+                    payload[api_key] = inp[py_key]
+            if inp.get("conn_params"):
+                payload["connParams"] = inp["conn_params"]
             return c.create_connection(payload)
 
         if tool_name == "idmc_update_connection":
-            return c.update_connection(inp["connection_id"], inp["payload"])
+            return c.update_connection(
+                inp["connection_id"], inp["payload"], inp.get("partial", False)
+            )
 
         if tool_name == "idmc_delete_connection":
             return c.delete_connection(inp["connection_id"])

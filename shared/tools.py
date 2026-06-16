@@ -20,8 +20,8 @@ TOOLS = [
             "properties": {
                 "pod_region": {
                     "type": "string",
-                    "enum": ["us", "eu", "ap", "em"],
-                    "description": "us=North America, eu=Europe, ap=Asia, em=EMEA (dm-em). Default: us.",
+                    "enum": ["us", "em", "ap", "na"],
+                    "description": "us=North America (dm-us), em=Europe/EMEA (dm-em), ap=Asia Pacific (dm-ap), na=Canada (dm-na). Default: us.",
                     "default": "us",
                 },
             },
@@ -39,12 +39,12 @@ TOOLS = [
     # ------------------------------------------------------------------
     {
         "name": "idmc_list_connections",
-        "description": "List all available source connections in the organisation.",
-            "input_schema": {
+        "description": "List all connections in the organisation, or get a specific connection by ID or name.",
+        "input_schema": {
             "type": "object",
             "properties": {
-                "limit":  {"type": "integer", "description": "Max results to return (default 50)", "default": 50},
-                "offset": {"type": "integer", "description": "Number of results to skip for pagination", "default": 0},
+                "connection_id":   {"type": "string", "description": "Specific connection ID. Mutually exclusive with connection_name."},
+                "connection_name": {"type": "string", "description": "Specific connection name (spaces supported). Mutually exclusive with connection_id."},
             },
         },
         "annotations": {
@@ -54,13 +54,34 @@ TOOLS = [
         },
     },
     {
-        "name": "idmc_get_connection_objects",
-        "description": "List all tables / files available in a connection.",
+        "name": "idmc_search_connections",
+        "description": "Search connections by type filtered by Secure Agent or runtime environment. Use to find connections of a specific type (e.g. Salesforce, Oracle) associated with a given agent or runtime environment.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "connection_id": {"type": "string", "description": "Connection ID"},
-                "search_pattern": {"type": "string", "description": "Optional filter pattern"},
+                "ui_type":               {"type": "string", "description": "Connection type code e.g. Salesforce, Oracle, MySQL, CSVFile, TOOLKIT, SqlServer2016, SFTP, FTP, ODBC, MSD, WebServicesConsumer."},
+                "runtime_environment_id": {"type": "string", "description": "Runtime environment ID. Takes precedence over agent_id if both provided."},
+                "agent_id":              {"type": "string", "description": "Secure Agent ID. Translated to runtimeEnvironmentId by the service."},
+            },
+            "required": ["ui_type"],
+        },
+        "annotations": {
+            "read_only": True,
+            "destructive": False,
+            "idempotent": False,
+        },
+    },
+    {
+        "name": "idmc_get_connection_objects",
+        "description": "List source or target objects (tables/files) available in a connection, or get connection metadata. Default returns up to 200 source objects.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "connection_id":    {"type": "string", "description": "Connection ID"},
+                "object_type":      {"type": "string", "enum": ["source", "target"], "description": "Whether to list source or target objects. Default: source."},
+                "search_pattern":   {"type": "string", "description": "Filter — only objects whose names contain this string are returned."},
+                "max_records_count": {"type": "integer", "description": "Maximum number of objects to return. Default 200."},
+                "metadata_only":    {"type": "boolean", "description": "Return runtimeAttribute metadata for the connection instead of object list. Default false."},
             },
             "required": ["connection_id"],
         },
@@ -115,7 +136,7 @@ TOOLS = [
     },
     {
         "name": "idmc_create_project",
-        "description": "Create a new project to organise profiling tasks.",
+        "description": "Create a new project to organise assets. Max 500 projects per org.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -132,13 +153,13 @@ TOOLS = [
     },
     {
         "name": "idmc_list_folders",
-        "description": "List all folders inside a project by project ID.",
+        "description": "List all folders inside a project. Provide project_id or project_name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "project_id": {"type": "string", "description": "Project ID to list folders from"},
+                "project_id":   {"type": "string", "description": "Project ID"},
+                "project_name": {"type": "string", "description": "Project name (use instead of project_id)"},
             },
-            "required": ["project_id"],
         },
         "annotations": {
             "read_only": True,
@@ -148,15 +169,16 @@ TOOLS = [
     },
     {
         "name": "idmc_create_folder",
-        "description": "Create a folder inside an existing project.",
+        "description": "Create a folder inside a project. Omit project_id/project_name to create in the Default project. Max 5000 folders per org.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "project_id": {"type": "string"},
-                "name": {"type": "string"},
-                "description": {"type": "string"},
+                "name":         {"type": "string"},
+                "description":  {"type": "string"},
+                "project_id":   {"type": "string", "description": "Project ID (omit to use Default project)"},
+                "project_name": {"type": "string", "description": "Project name (alternative to project_id)"},
             },
-            "required": ["project_id", "name"],
+            "required": ["name"],
         },
         "annotations": {
             "read_only": False,
@@ -980,11 +1002,11 @@ TOOLS = [
     },
     {
         "name": "idmc_get_user",
-        "description": "Get details for a specific user by user ID.",
+        "description": "Get details for a specific user. Pass either the user ID or the username (email).",
         "input_schema": {
             "type": "object",
             "properties": {
-                "user_id": {"type": "string"},
+                "user_id": {"type": "string", "description": "User ID or username (email address)"},
             },
             "required": ["user_id"],
         },
@@ -1000,16 +1022,22 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "name":      {"type": "string", "description": "Username / email"},
-                "first_name": {"type": "string"},
-                "last_name":  {"type": "string"},
-                "title":      {"type": "string"},
-                "phone":      {"type": "string"},
-                "emails":     {"type": "string", "description": "Notification email address"},
-                "timezone":   {"type": "string"},
-                "roles":      {"type": "array", "items": {"type": "string"}, "description": "List of role names"},
+                "name":                {"type": "string", "description": "Username. Must be a valid email address."},
+                "first_name":          {"type": "string"},
+                "last_name":           {"type": "string"},
+                "email":               {"type": "string", "description": "Email address for the user."},
+                "password":            {"type": "string", "description": "Password. Omit to send an activation email instead."},
+                "title":               {"type": "string"},
+                "phone":               {"type": "string"},
+                "timezone":            {"type": "string", "description": "Time zone code, e.g. America/Los_Angeles"},
+                "description":         {"type": "string"},
+                "authentication":      {"type": "integer", "description": "0 = Native, 1 = SAML", "default": 0},
+                "force_password_change": {"type": "boolean", "description": "Force password reset on first login"},
+                "max_login_attempts":  {"type": "integer", "description": "Max failed logins before lockout"},
+                "roles":               {"type": "array", "items": {"type": "string"}, "description": "Role IDs to assign. Required if groups not provided."},
+                "groups":              {"type": "array", "items": {"type": "string"}, "description": "User group IDs to assign. Required if roles not provided."},
             },
-            "required": ["name"],
+            "required": ["name", "first_name", "last_name", "email"],
         },
         "annotations": {
             "read_only": False,
@@ -1104,18 +1132,16 @@ TOOLS = [
     {
         "name": "idmc_change_password",
         "description": (
-            "Change a user's password. "
+            "Change the currently logged-in user's password. "
             "Prefer passing passwords via IDMC_OLD_PASSWORD / IDMC_NEW_PASSWORD env vars "
             "rather than as plaintext arguments."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "username":     {"type": "string"},
                 "old_password": {"type": "string", "description": "Current password. Omit to use IDMC_OLD_PASSWORD env var."},
                 "new_password": {"type": "string", "description": "New password. Omit to use IDMC_NEW_PASSWORD env var."},
             },
-            "required": ["username"],
         },
         "annotations": {
             "read_only": False,
@@ -1129,7 +1155,7 @@ TOOLS = [
     # ------------------------------------------------------------------
     {
         "name": "idmc_get_roles",
-        "description": "List all roles in the organisation. Use query to filter (e.g. roleName==\"Admin\") and expand=privileges to include privileges. Supports pagination.",
+        "description": "List all roles in the organisation. Supports pagination. To include privileges, you MUST combine expand=privileges with a q= filter (e.g. q='roleName==\"Admin\"' and expand='privileges'). Using expand without q= will return a 400 error.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -1147,8 +1173,13 @@ TOOLS = [
     },
     {
         "name": "idmc_get_privileges",
-        "description": "List all available privileges in the organisation.",
-        "input_schema": {"type": "object", "properties": {}},
+        "description": "List privileges in the organisation. By default returns only enabled/default privileges. Use query='status==All' to include disabled and unassigned privileges.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Filter query, e.g. 'status==All' to include disabled/unassigned privileges"},
+            },
+        },
         "annotations": {
             "read_only": True,
             "destructive": False,
@@ -1175,14 +1206,15 @@ TOOLS = [
     },
     {
         "name": "idmc_add_role_privileges",
-        "description": "Add privileges to an existing custom role.",
+        "description": "Add privileges to an existing custom role by role ID or role name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "role_id":    {"type": "string"},
+                "role_id":    {"type": "string", "description": "Role ID"},
+                "role_name":  {"type": "string", "description": "Role name (alternative to role_id)"},
                 "privileges": {"type": "array", "items": {"type": "string"}, "description": "Privilege names to add"},
             },
-            "required": ["role_id", "privileges"],
+            "required": ["privileges"],
         },
         "annotations": {
             "read_only": False,
@@ -1192,14 +1224,15 @@ TOOLS = [
     },
     {
         "name": "idmc_remove_role_privileges",
-        "description": "Remove privileges from a custom role.",
+        "description": "Remove privileges from a custom role by role ID or role name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "role_id":    {"type": "string"},
+                "role_id":    {"type": "string", "description": "Role ID"},
+                "role_name":  {"type": "string", "description": "Role name (alternative to role_id)"},
                 "privileges": {"type": "array", "items": {"type": "string"}, "description": "Privilege names to remove"},
             },
-            "required": ["role_id", "privileges"],
+            "required": ["privileges"],
         },
         "annotations": {
             "read_only": False,
@@ -1209,13 +1242,13 @@ TOOLS = [
     },
     {
         "name": "idmc_delete_role",
-        "description": "Delete a custom role from the organisation.",
+        "description": "Delete a custom role from the organisation by role ID or role name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "role_id": {"type": "string"},
+                "role_id":   {"type": "string", "description": "Role ID"},
+                "role_name": {"type": "string", "description": "Role name (alternative to role_id)"},
             },
-            "required": ["role_id"],
         },
         "annotations": {
             "read_only": False,
@@ -1233,9 +1266,9 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "query":  {"type": "string", "description": "Filter query"},
-                "limit":  {"type": "integer", "description": "Max results to return (default 50)", "default": 50},
-                "offset": {"type": "integer", "description": "Number of results to skip", "default": 0},
+                "query":  {"type": "string", "description": "Filter query, e.g. userGroupName==\"group_a\""},
+                "limit":  {"type": "integer", "description": "Max results to return (default 100)", "default": 100},
+                "offset": {"type": "integer", "description": "Number of results to skip (maps to skip param)", "default": 0},
             },
         },
         "annotations": {
@@ -1246,13 +1279,13 @@ TOOLS = [
     },
     {
         "name": "idmc_get_user_group",
-        "description": "Get details for a specific user group by ID.",
+        "description": "Get details for a specific user group by ID or name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "group_id": {"type": "string"},
+                "group_id":   {"type": "string", "description": "User group ID"},
+                "group_name": {"type": "string", "description": "User group name (alternative to group_id)"},
             },
-            "required": ["group_id"],
         },
         "annotations": {
             "read_only": True,
@@ -1268,10 +1301,10 @@ TOOLS = [
             "properties": {
                 "name":        {"type": "string"},
                 "description": {"type": "string"},
-                "roles":       {"type": "array", "items": {"type": "string"}, "description": "Role names to assign"},
+                "roles":       {"type": "array", "items": {"type": "string"}, "description": "Role IDs to assign (required by API)"},
                 "users":       {"type": "array", "items": {"type": "string"}, "description": "User IDs to add"},
             },
-            "required": ["name"],
+            "required": ["name", "roles"],
         },
         "annotations": {
             "read_only": False,
@@ -1281,14 +1314,15 @@ TOOLS = [
     },
     {
         "name": "idmc_add_users_to_group",
-        "description": "Add users to a user group.",
+        "description": "Add users to a user group by group ID or group name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "group_id": {"type": "string"},
-                "users":    {"type": "array", "items": {"type": "string"}, "description": "User IDs to add"},
+                "group_id":   {"type": "string", "description": "User group ID"},
+                "group_name": {"type": "string", "description": "User group name (alternative to group_id)"},
+                "users":      {"type": "array", "items": {"type": "string"}, "description": "User names to add (e.g. [\"LarryR\", \"ScottY\"])"},
             },
-            "required": ["group_id", "users"],
+            "required": ["users"],
         },
         "annotations": {
             "read_only": False,
@@ -1298,14 +1332,15 @@ TOOLS = [
     },
     {
         "name": "idmc_remove_users_from_group",
-        "description": "Remove users from a user group.",
+        "description": "Remove users from a user group by group ID or group name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "group_id": {"type": "string"},
-                "users":    {"type": "array", "items": {"type": "string"}, "description": "User IDs to remove"},
+                "group_id":   {"type": "string", "description": "User group ID"},
+                "group_name": {"type": "string", "description": "User group name (alternative to group_id)"},
+                "users":      {"type": "array", "items": {"type": "string"}, "description": "User names to remove (e.g. [\"LarryR\", \"ScottY\"])"},
             },
-            "required": ["group_id", "users"],
+            "required": ["users"],
         },
         "annotations": {
             "read_only": False,
@@ -1315,14 +1350,15 @@ TOOLS = [
     },
     {
         "name": "idmc_add_roles_to_group",
-        "description": "Add roles to a user group.",
+        "description": "Add roles to a user group by group ID or group name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "group_id": {"type": "string"},
-                "roles":    {"type": "array", "items": {"type": "string"}, "description": "Role names to add"},
+                "group_id":   {"type": "string", "description": "User group ID"},
+                "group_name": {"type": "string", "description": "User group name (alternative to group_id)"},
+                "roles":      {"type": "array", "items": {"type": "string"}, "description": "Role names to add"},
             },
-            "required": ["group_id", "roles"],
+            "required": ["roles"],
         },
         "annotations": {
             "read_only": False,
@@ -1332,14 +1368,15 @@ TOOLS = [
     },
     {
         "name": "idmc_remove_roles_from_group",
-        "description": "Remove roles from a user group.",
+        "description": "Remove roles from a user group by group ID or group name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "group_id": {"type": "string"},
-                "roles":    {"type": "array", "items": {"type": "string"}, "description": "Role names to remove"},
+                "group_id":   {"type": "string", "description": "User group ID"},
+                "group_name": {"type": "string", "description": "User group name (alternative to group_id)"},
+                "roles":      {"type": "array", "items": {"type": "string"}, "description": "Role names to remove"},
             },
-            "required": ["group_id", "roles"],
+            "required": ["roles"],
         },
         "annotations": {
             "read_only": False,
@@ -1349,13 +1386,13 @@ TOOLS = [
     },
     {
         "name": "idmc_delete_user_group",
-        "description": "Delete a user group from the organisation.",
+        "description": "Delete a user group from the organisation by group ID or group name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "group_id": {"type": "string"},
+                "group_id":   {"type": "string", "description": "User group ID"},
+                "group_name": {"type": "string", "description": "User group name (alternative to group_id)"},
             },
-            "required": ["group_id"],
         },
         "annotations": {
             "read_only": False,
@@ -1445,11 +1482,12 @@ TOOLS = [
     # ------------------------------------------------------------------
     {
         "name": "idmc_get_runtime_environments",
-        "description": "List all Secure Agent runtime environments. Optionally get a specific one by env_id.",
+        "description": "List all Secure Agent runtime environments, or get a specific one by env_id or env_name.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "env_id": {"type": "string", "description": "Specific runtime environment ID"},
+                "env_id":   {"type": "string", "description": "Specific runtime environment ID. Mutually exclusive with env_name."},
+                "env_name": {"type": "string", "description": "Runtime environment name (spaces supported). Mutually exclusive with env_id."},
             },
         },
         "annotations": {
@@ -1460,11 +1498,21 @@ TOOLS = [
     },
     {
         "name": "idmc_get_secure_agents",
-        "description": "List all Secure Agents in the organisation. Optionally get a specific agent by agent_id.",
+        "description": (
+            "List all Secure Agents in the organisation, or get a specific agent by ID or name. "
+            "Use include_service_details=true to retrieve AgentEngine service status (running/stopped). "
+            "Use include_unassigned_only=true to list agents not assigned to any group. "
+            "Use basic_info=true to include package and configuration details."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "agent_id": {"type": "string", "description": "Specific Secure Agent ID"},
+                "agent_id":                {"type": "string",  "description": "Specific Secure Agent ID. Mutually exclusive with agent_name."},
+                "agent_name":              {"type": "string",  "description": "Secure Agent name (spaces supported). Mutually exclusive with agent_id."},
+                "include_unassigned_only": {"type": "boolean", "description": "Return only agents not assigned to any group. Default false."},
+                "basic_info":              {"type": "boolean", "description": "Include package and configuration details. Default false."},
+                "include_service_details": {"type": "boolean", "description": "Return AgentEngine service status for all or a specific agent. Default false."},
+                "only_status":             {"type": "boolean", "description": "When include_service_details=true, set false to also return agentEngineConfigs. Default true."},
             },
         },
         "annotations": {
@@ -1507,11 +1555,12 @@ TOOLS = [
     # ------------------------------------------------------------------
     {
         "name": "idmc_get_object_permissions",
-        "description": "Get permissions set on a specific IICS object (project, folder, asset).",
+        "description": "Get permissions on an IICS object (project, folder, asset). Omit acl_id to get all ACLs; provide acl_id to get a specific ACL.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "object_id": {"type": "string", "description": "FRS object ID"},
+                "object_id": {"type": "string", "description": "Object ID"},
+                "acl_id":    {"type": "string", "description": "ACL ID — omit to return all permissions for the object"},
             },
             "required": ["object_id"],
         },
@@ -1523,14 +1572,20 @@ TOOLS = [
     },
     {
         "name": "idmc_create_object_permission",
-        "description": "Set permissions on an IICS object for a user or group.",
+        "description": "Create an ACL (access control list) for a user or group on an IICS object (project, folder, asset).",
         "input_schema": {
             "type": "object",
             "properties": {
-                "object_id": {"type": "string"},
-                "payload":   {"type": "object", "description": "Permission payload with subject and permissions"},
+                "object_id":        {"type": "string", "description": "Object ID"},
+                "principal_type":   {"type": "string", "enum": ["USER", "GROUP"], "description": "Whether the ACL is for a USER or GROUP"},
+                "principal_name":   {"type": "string", "description": "Username or group name"},
+                "read":             {"type": "boolean", "description": "Allow view access"},
+                "update":           {"type": "boolean", "description": "Allow update access"},
+                "delete":           {"type": "boolean", "description": "Allow delete access"},
+                "execute":          {"type": "boolean", "description": "Allow run/execute access"},
+                "change_permission":{"type": "boolean", "description": "Allow changing permissions on the object"},
             },
-            "required": ["object_id", "payload"],
+            "required": ["object_id", "principal_type", "principal_name", "read", "update", "delete", "execute", "change_permission"],
         },
         "annotations": {
             "read_only": False,
@@ -1540,14 +1595,14 @@ TOOLS = [
     },
     {
         "name": "idmc_delete_object_permission",
-        "description": "Remove permissions from an IICS object.",
+        "description": "Delete a specific ACL by acl_id, or delete ALL permissions on an object by omitting acl_id.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "object_id": {"type": "string"},
-                "payload":   {"type": "object", "description": "Permission payload identifying what to remove"},
+                "object_id": {"type": "string", "description": "Object ID"},
+                "acl_id":    {"type": "string", "description": "ACL ID to delete. Omit to delete ALL permissions on the object."},
             },
-            "required": ["object_id", "payload"],
+            "required": ["object_id"],
         },
         "annotations": {
             "read_only": False,
@@ -1785,12 +1840,41 @@ TOOLS = [
     },
     {
         "name": "idmc_update_organization",
-        "description": "Update organisation or sub-organisation details (name, address, emails, password policy).",
+        "description": (
+            "Update organisation or sub-organisation details. WARNING: this is a FULL update — "
+            "any field omitted from the payload resets to its default value. "
+            "Required payload fields: name, address1, city, country, employees. "
+            "Optional: address2, address3, state (required when country=US), zipcode (required when country=US), "
+            "timezone, description, successEmails, warningEmails, errorEmails, "
+            "passwordReuseInDays, passwordExpirationInDays."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "org_id":  {"type": "string", "description": "Org ID to update; omit to update current org"},
-                "payload": {"type": "object", "description": "Fields to update (name, city, country, employees, etc.)"},
+                "org_id":  {"type": "string", "description": "Sub-org ID to update; omit to update current org"},
+                "payload": {
+                    "type": "object",
+                    "description": "Org fields. Required: name, address1, city, country, employees. state/zipcode required when country=US.",
+                    "properties": {
+                        "name":                     {"type": "string"},
+                        "address1":                 {"type": "string"},
+                        "address2":                 {"type": "string"},
+                        "address3":                 {"type": "string"},
+                        "city":                     {"type": "string"},
+                        "state":                    {"type": "string", "description": "State code. Required when country=US."},
+                        "zipcode":                  {"type": "string", "description": "Required when country=US."},
+                        "country":                  {"type": "string", "description": "Country code e.g. US, GB, DE"},
+                        "timezone":                 {"type": "string"},
+                        "description":              {"type": "string"},
+                        "employees":                {"type": "string", "enum": ["0_10","11_25","26_50","51_100","101_500","501_1000","1001_5000","5001_"]},
+                        "successEmails":            {"type": "string"},
+                        "warningEmails":            {"type": "string"},
+                        "errorEmails":              {"type": "string"},
+                        "passwordReuseInDays":      {"type": "integer", "description": "0 = always reusable. Max 730."},
+                        "passwordExpirationInDays": {"type": "integer", "description": "0 = never expires. Max 360."},
+                    },
+                    "required": ["name", "address1", "city", "country", "employees"],
+                },
             },
             "required": ["payload"],
         },
@@ -1818,22 +1902,43 @@ TOOLS = [
     },
     {
         "name": "idmc_create_sub_organization",
-        "description": "Create a new sub-organisation (IDMC partner feature). Requires admin role in parent org.",
+        "description": "Create a new sub-organisation (IDMC partner feature). Requires admin role in parent org. POST /api/v2/user/register.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "org_name":        {"type": "string"},
-                "org_address":     {"type": "string"},
+                # --- org fields ---
+                "org_name":        {"type": "string", "description": "Name for the new org."},
+                "org_address":     {"type": "string", "description": "address1 — street address."},
+                "org_address2":    {"type": "string"},
+                "org_address3":    {"type": "string"},
                 "org_city":        {"type": "string"},
-                "org_country":     {"type": "string"},
-                "org_employees":   {"type": "string", "description": "e.g. 11_25, 26_50, 51_100"},
-                "admin_username":  {"type": "string", "description": "Email for the new org admin"},
+                "org_state":       {"type": "string", "description": "State code. Required when country=US."},
+                "org_zipcode":     {"type": "string", "description": "Required when country=US."},
+                "org_country":     {"type": "string", "description": "Country code e.g. US, GB, DE"},
+                "org_timezone":    {"type": "string", "description": "e.g. America/Chicago. Defaults to America/Los_Angeles."},
+                "org_employees":   {"type": "string", "enum": ["0_10","11_25","26_50","51_100","101_500","501_1000","1001_5000","5001_"]},
+                "org_offer_code":  {"type": "string", "description": "Offer code for IDMC partners."},
+                # --- admin user fields ---
+                "admin_username":  {"type": "string", "description": "Email address for the org admin account."},
                 "admin_password":  {"type": "string"},
                 "admin_first_name": {"type": "string"},
                 "admin_last_name":  {"type": "string"},
                 "admin_title":     {"type": "string"},
                 "admin_phone":     {"type": "string"},
-                "admin_email":     {"type": "string"},
+                "admin_email":     {"type": "string", "description": "Email for IDMC notifications."},
+                "admin_timezone":  {"type": "string"},
+                "admin_security_question": {
+                    "type": "string",
+                    "enum": ["SPOUSE_MEETING_CITY","FIRST_JOB_CITY","CHILDHOOD_FRIEND",
+                             "MOTHER_MAIDEN_NAME","PET_NAME","CHILDHOOD_NICKNAME"],
+                    "description": "Security question code.",
+                },
+                "admin_security_answer":       {"type": "string"},
+                "admin_force_change_password": {"type": "boolean", "description": "Force password reset on first login."},
+                "admin_opt_out_of_emails":     {"type": "boolean", "description": "Opt out of Informatica marketing emails."},
+                # --- registration fields ---
+                "registration_code": {"type": "string"},
+                "send_email":        {"type": "boolean", "default": True, "description": "Send welcome email to admin."},
             },
             "required": ["org_name", "org_address", "org_city", "org_country", "org_employees",
                          "admin_username", "admin_password", "admin_first_name", "admin_last_name",
@@ -1959,18 +2064,82 @@ TOOLS = [
     },
     {
         "name": "idmc_update_runtime_environment_selections",
-        "description": "Enable or disable services and connectors for a Secure Agent group.",
+        "description": "Enable or disable services and connectors for a Secure Agent group. Use idmc_get_runtime_environment_selections with details=true to find selection IDs.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "env_id":  {"type": "string"},
-                "payload": {"type": "object", "description": "Selections payload with services and connectors arrays"},
+                "payload": {"type": "object", "description": "Selections payload e.g. {\"services\":{\"selections\":[{\"id\":\"...\",\"name\":\"...\",\"enabled\":true}]},\"connectors\":{\"selections\":[...]},\"additionalServices\":{\"selections\":[...]}}"},
             },
             "required": ["env_id", "payload"],
         },
         "annotations": {
             "read_only": False,
             "destructive": False,
+            "idempotent": True,
+        },
+    },
+    {
+        "name": "idmc_get_runtime_environment_configs",
+        "description": (
+            "Get Secure Agent service property configurations for a Secure Agent group. "
+            "Use details=true to list all editable properties; omit to list only overridden properties. "
+            "Platform defaults to linux64."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "env_id":   {"type": "string", "description": "Runtime environment (Secure Agent group) ID."},
+                "platform": {"type": "string", "enum": ["linux64", "win64"], "description": "Agent platform. Default: linux64."},
+                "details":  {"type": "boolean", "description": "true = list all editable properties; false (default) = list only overridden properties."},
+            },
+            "required": ["env_id"],
+        },
+        "annotations": {
+            "read_only": True,
+            "destructive": False,
+            "idempotent": False,
+        },
+    },
+    {
+        "name": "idmc_update_runtime_environment_configs",
+        "description": (
+            "Configure Secure Agent service properties for a Secure Agent group. "
+            "Properties set here override agent-level defaults for all agents in the group. "
+            "Use service names as returned by idmc_get_runtime_environment_configs (e.g. 'Data_Integration_Server'). "
+            "Set value to 'APP_DEFAULT' to revert a property to its system default."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "env_id":   {"type": "string", "description": "Runtime environment (Secure Agent group) ID."},
+                "platform": {"type": "string", "enum": ["linux64", "win64"], "description": "Agent platform. Default: linux64."},
+                "payload":  {"type": "object", "description": "Service config payload e.g. {\"Data_Integration_Server\":[{\"TOMCAT_CFG\":[{\"name\":\"NetworkTimeoutPeriod\",\"value\":\"300\"}]}]}"},
+            },
+            "required": ["env_id", "payload"],
+        },
+        "annotations": {
+            "read_only": False,
+            "destructive": False,
+            "idempotent": True,
+        },
+    },
+    {
+        "name": "idmc_delete_runtime_environment_configs",
+        "description": (
+            "Delete all group-level Secure Agent service property settings for a Secure Agent group. "
+            "All agents in the group revert to service defaults. Custom properties are removed."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "env_id": {"type": "string", "description": "Runtime environment (Secure Agent group) ID."},
+            },
+            "required": ["env_id"],
+        },
+        "annotations": {
+            "read_only": False,
+            "destructive": True,
             "idempotent": True,
         },
     },
@@ -2149,15 +2318,21 @@ TOOLS = [
     # ------------------------------------------------------------------
     {
         "name": "idmc_update_object_permission",
-        "description": "Update an existing ACL (permission entry) on an IDMC object.",
+        "description": "Update an existing ACL (permission entry) on an IDMC object. Uses PUT — all permission fields must be provided.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "object_id":     {"type": "string"},
-                "permission_id": {"type": "string", "description": "ACL ID to update"},
-                "payload":       {"type": "object", "description": "Updated principal and permissions"},
+                "object_id":         {"type": "string", "description": "Object ID"},
+                "acl_id":            {"type": "string", "description": "ACL ID to update"},
+                "principal_type":    {"type": "string", "enum": ["USER", "GROUP"]},
+                "principal_name":    {"type": "string", "description": "Username or group name"},
+                "read":              {"type": "boolean"},
+                "update":            {"type": "boolean"},
+                "delete":            {"type": "boolean"},
+                "execute":           {"type": "boolean"},
+                "change_permission": {"type": "boolean"},
             },
-            "required": ["object_id", "permission_id", "payload"],
+            "required": ["object_id", "acl_id", "principal_type", "principal_name", "read", "update", "delete", "execute", "change_permission"],
         },
         "annotations": {
             "read_only": False,
@@ -2222,16 +2397,17 @@ TOOLS = [
     },
     {
         "name": "idmc_update_folder",
-        "description": "Update a folder's name or description inside a project.",
+        "description": "Update a folder's name or description. Use (project_id + folder_id), (project_name + folder_name), or just folder_id for the Default project.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "project_id":   {"type": "string"},
+                "project_name": {"type": "string"},
                 "folder_id":    {"type": "string"},
-                "name":         {"type": "string"},
+                "folder_name":  {"type": "string"},
+                "name":         {"type": "string", "description": "New folder name"},
                 "description":  {"type": "string"},
             },
-            "required": ["folder_id"],
         },
         "annotations": {
             "read_only": False,
@@ -2241,14 +2417,15 @@ TOOLS = [
     },
     {
         "name": "idmc_delete_folder",
-        "description": "Delete an empty folder from a project.",
+        "description": "Delete an empty folder. Folder must contain no assets. Use (project_id + folder_id), (project_name + folder_name), or just folder_id for the Default project.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "project_id":   {"type": "string"},
+                "project_name": {"type": "string"},
                 "folder_id":    {"type": "string"},
+                "folder_name":  {"type": "string"},
             },
-            "required": ["folder_id"],
         },
         "annotations": {
             "read_only": False,
@@ -2937,13 +3114,18 @@ TOOLS = [
     # ------------------------------------------------------------------
     {
         "name": "idmc_manage_secure_agent_service",
-        "description": "Start or stop a specific Secure Agent service (e.g. Data Integration Server).",
+        "description": (
+            "Start or stop a specific Secure Agent service (e.g. 'Data Integration Server'). "
+            "Uses POST public/core/v3/agent/service. "
+            "Response includes serviceState: NEED_RUNNING, NEED_STOP, DEPLOYING, DEPLOYED, STARTING, "
+            "RUNNING, RESTARTING, STOPPING, USER_STOPPED, ERROR, or UNKNOWN."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "agent_id":       {"type": "string", "description": "Secure Agent ID"},
-                "service_name":   {"type": "string", "description": "Display name of the service, e.g. 'Data Integration Server'"},
-                "service_action": {"type": "string", "enum": ["start", "stop"]},
+                "agent_id":       {"type": "string", "description": "Secure Agent federatedId (NOT the orgId-based id). Use idmc_get_secure_agents to find the federatedId field."},
+                "service_name":   {"type": "string", "description": "Display name of the Secure Agent service, e.g. 'Data Integration Server'."},
+                "service_action": {"type": "string", "enum": ["start", "stop"], "description": "start = start latest version; stop = stop all versions."},
             },
             "required": ["agent_id", "service_name", "service_action"],
         },
@@ -3198,22 +3380,32 @@ TOOLS = [
     # ------------------------------------------------------------------
     {
         "name": "idmc_create_connection",
-        "description": "Create a new connection in the organisation (Salesforce, Oracle, MySQL, S3, etc.).",
+        "description": (
+            "Create a new connection. type is required (e.g. Salesforce, Oracle, MySQL, CSVFile, ODBC, FTP, SFTP, TOOLKIT, MSD, SqlServer2016). "
+            "Use agent_id for connections that require a Secure Agent (flat file, FTP/SFTP, SQL Server, MySQL, Oracle, ODBC, SAP, Web Service). "
+            "Use runtime_environment_id for the runtime environment. "
+            "Use conn_params for connector-specific attributes not listed here (SAP, NetSuite, ODBC subtypes, etc.). "
+            "Use idmc_get_connector_metadata to discover required attributes for a connector type."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "name":                  {"type": "string"},
-                "type":                  {"type": "string", "description": "Connection type, e.g. Salesforce, Oracle, MySQL, CSVFile, TOOLKIT"},
-                "description":           {"type": "string"},
-                "runtime_environment_id": {"type": "string"},
-                "username":              {"type": "string"},
-                "password":              {"type": "string"},
-                "host":                  {"type": "string"},
-                "port":                  {"type": "integer"},
-                "database":              {"type": "string"},
-                "schema":                {"type": "string"},
-                "service_url":           {"type": "string"},
-                "extra_properties":      {"type": "object", "description": "Additional connector-specific properties"},
+                "name":                   {"type": "string"},
+                "type":                   {"type": "string", "description": "Connection type code e.g. Salesforce, Oracle, MySQL, CSVFile, ODBC, FTP, SFTP, TOOLKIT, MSD, SqlServer2016, WebServicesConsumer."},
+                "description":            {"type": "string"},
+                "agent_id":               {"type": "string", "description": "Secure Agent ID. Required for on-premise connector types."},
+                "runtime_environment_id": {"type": "string", "description": "Runtime environment (Secure Agent group) ID."},
+                "username":               {"type": "string"},
+                "password":               {"type": "string"},
+                "host":                   {"type": "string"},
+                "port":                   {"type": "integer"},
+                "database":               {"type": "string", "description": "Database name, directory, DSN, or service name depending on connection type."},
+                "schema":                 {"type": "string"},
+                "service_url":            {"type": "string", "description": "Service URL for Salesforce, MSD, Oracle CRM, Web Service, NetSuite connections."},
+                "security_token":         {"type": "string", "description": "Security token for Salesforce connections."},
+                "authentication_type":    {"type": "string", "description": "Auth type for MSD (LIVE/IFD/AD), SQL Server (Windows/SqlServer), Web Service (Auto/Basic/Digest/NTLM), ODBC (Database/Kerberos)."},
+                "codepage":               {"type": "string", "description": "Code page e.g. UTF-8, MS1252. Required for Oracle, MySQL, SQL Server, flat file, FTP/SFTP, SAP connections."},
+                "conn_params":            {"type": "object", "description": "Additional connector-specific attributes (SAP, NetSuite, ODBC subtypes, etc.). Enclosed in connParams in the request."},
             },
             "required": ["name", "type"],
         },
@@ -3225,12 +3417,17 @@ TOOLS = [
     },
     {
         "name": "idmc_update_connection",
-        "description": "Update an existing connection by connection ID.",
+        "description": (
+            "Update an existing connection by connection ID. "
+            "Set partial=true to submit only the fields you want to change (recommended). "
+            "Without partial mode, all fields must be provided."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "connection_id": {"type": "string"},
-                "payload":       {"type": "object", "description": "Fields to update"},
+                "payload":       {"type": "object", "description": "Fields to update. Refer to idmc_create_connection for field names."},
+                "partial":       {"type": "boolean", "description": "Use partial update mode — only provided fields are updated. Default false."},
             },
             "required": ["connection_id", "payload"],
         },

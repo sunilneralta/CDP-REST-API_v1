@@ -1,0 +1,678 @@
+IDMC REST API MCP Server — Complete Tool Reference
+======================================================================
+Total tools: 208
+
+## Authentication (5 tools)
+----------------------------------------------------------------------
+  1. idmc_login
+       Description: Login to Informatica Intelligent Cloud Services. Must be called first before any other tool. Returns session ID and base URL. Credentials are collected via a native GUI dialog. On headless systems set IDMC_USERNAME and IDMC_PASSWORD environment variables instead.
+
+  2. idmc_logout
+       Description: Log out and invalidate the current session.
+
+  3. idmc_logout_all_sessions
+       Description: Log out and end ALL active REST API sessions for the organisation.
+
+  4. idmc_validate_session
+       Description: Check whether the current session ID is still valid and how many minutes remain.
+
+  5. idmc_change_password
+       Description: Change a user's password. Prefer passing passwords via IDMC_OLD_PASSWORD / IDMC_NEW_PASSWORD env vars rather than as plaintext arguments.
+
+## Users (5 tools)
+----------------------------------------------------------------------
+  6. idmc_get_users
+       Description: List all users in the organisation. Optionally filter with a query string (e.g. username=="john@example.com"). Supports pagination.
+
+  7. idmc_get_user
+       Description: Get details for a specific user by user ID.
+
+  8. idmc_create_user
+       Description: Create a new user in the organisation.
+
+  9. idmc_delete_user
+       Description: Permanently delete a user from the organisation.
+
+ 10. idmc_reset_password
+       Description: Reset a user's password using their security answer (for expired/forgotten passwords).
+
+## User Groups (8 tools)
+----------------------------------------------------------------------
+ 11. idmc_get_user_groups
+       Description: List all user groups in the organisation. Optionally filter with a query string. Supports pagination.
+
+ 12. idmc_get_user_group
+       Description: Get details for a specific user group by ID.
+
+ 13. idmc_create_user_group
+       Description: Create a new user group.
+
+ 14. idmc_delete_user_group
+       Description: Delete a user group from the organisation.
+
+ 15. idmc_add_user_groups
+       Description: Add a user to one or more user groups.
+
+ 16. idmc_remove_user_groups
+       Description: Remove a user from one or more user groups.
+
+ 17. idmc_add_users_to_group
+       Description: Add users to a user group.
+
+ 18. idmc_remove_users_from_group
+       Description: Remove users from a user group.
+
+## User Roles (2 tools)
+----------------------------------------------------------------------
+ 19. idmc_add_user_roles
+       Description: Add roles to a user.
+
+ 20. idmc_remove_user_roles
+       Description: Remove roles from a user.
+
+## Roles & Privileges (8 tools)
+----------------------------------------------------------------------
+ 21. idmc_get_roles
+       Description: List all roles in the organisation. Use query to filter (e.g. roleName=="Admin") and expand=privileges to include privileges. Supports pagination.
+
+ 22. idmc_create_role
+       Description: Create a new custom role with specified privileges.
+
+ 23. idmc_delete_role
+       Description: Delete a custom role from the organisation.
+
+ 24. idmc_get_privileges
+       Description: List all available privileges in the organisation.
+
+ 25. idmc_add_role_privileges
+       Description: Add privileges to an existing custom role.
+
+ 26. idmc_remove_role_privileges
+       Description: Remove privileges from a custom role.
+
+ 27. idmc_add_roles_to_group
+       Description: Add roles to a user group.
+
+ 28. idmc_remove_roles_from_group
+       Description: Remove roles from a user group.
+
+## SAML / Identity Providers (10 tools)
+----------------------------------------------------------------------
+ 29. idmc_get_identity_providers
+       Description: Get the registered identity provider(s) for an organisation.
+
+ 30. idmc_register_identity_provider
+       Description: Register an OIDC identity provider for JWT/OAuth login. Only one IDP per org.
+
+ 31. idmc_update_identity_provider
+       Description: Update an existing identity provider configuration.
+
+ 32. idmc_delete_identity_provider
+       Description: Delete the registered identity provider for an organisation.
+
+ 33. idmc_get_saml_group_mappings
+       Description: Get SAML group-to-IDMC-role mappings for the organisation.
+
+ 34. idmc_add_saml_group_mappings
+       Description: Map SAML groups to IDMC roles for SSO group-based access control.
+
+ 35. idmc_remove_saml_group_mappings
+       Description: Remove SAML group-to-IDMC-role mappings.
+
+ 36. idmc_get_saml_role_mappings
+       Description: Get SAML role-to-IDMC-role mappings for the organisation.
+
+ 37. idmc_add_saml_role_mappings
+       Description: Map SAML roles to IDMC roles for SSO role-based access control.
+
+ 38. idmc_remove_saml_role_mappings
+       Description: Remove SAML role-to-IDMC-role mappings.
+
+## Organization (14 tools)
+----------------------------------------------------------------------
+ 39. idmc_get_organization
+       Description: Get details for the current organisation (org ID, name, edition, etc.).
+
+ 40. idmc_get_organization_details
+       Description: Get details for the current org or a sub-organisation by ID or name.
+
+ 41. idmc_update_organization
+       Description: Update organisation or sub-organisation details (name, address, emails, password policy).
+
+ 42. idmc_create_sub_organization
+       Description: Create a new sub-organisation (IDMC partner feature). Requires admin role in parent org.
+
+ 43. idmc_delete_sub_organization
+       Description: Permanently delete a sub-organisation by ID.
+
+ 44. idmc_update_sub_org_license
+       Description: Update a sub-organisation's license (editions, custom licenses, limits). Requires parent org Admin.
+
+ 45. idmc_get_license
+       Description: Get licence details for the current organisation.
+
+ 46. idmc_get_trusted_ips
+       Description: Get trusted IP address ranges configured for the organisation.
+
+ 47. idmc_update_trusted_ips
+       Description: Set trusted IP address ranges and enable/disable IP filtering for the organisation.
+
+ 48. idmc_get_key_rotation_settings
+       Description: Get the current encryption key rotation interval and valid options. Requires Key Admin role.
+
+ 49. idmc_update_key_rotation_settings
+       Description: Change the encryption key rotation interval (90_DAYS, 120_DAYS, 180_DAYS, 365_DAYS).
+
+ 50. idmc_get_audit_log
+       Description: Get organisation audit log entries (user actions, config changes, etc.).
+
+ 51. idmc_get_security_logs
+       Description: Get security log entries (login/logout, user/group/role changes). Requires Admin role.
+
+ 52. idmc_get_server_time
+       Description: Get the current IICS server time.
+
+## SCIM Tokens (3 tools)
+----------------------------------------------------------------------
+ 53. idmc_list_scim_tokens
+       Description: List SCIM tokens created for the organisation.
+
+ 54. idmc_create_scim_token
+       Description: Create a new SCIM 2.0 token for pushing users/groups from an IdP.
+
+ 55. idmc_delete_scim_token
+       Description: Delete a SCIM token by token ID.
+
+## Secure Agents (4 tools)
+----------------------------------------------------------------------
+ 56. idmc_get_secure_agents
+       Description: List all Secure Agents in the organisation. Optionally get a specific agent by agent_id.
+
+ 57. idmc_delete_secure_agent
+       Description: Delete a Secure Agent by ID. Ensure no connections use the agent before deleting.
+
+ 58. idmc_manage_secure_agent_service
+       Description: Start or stop a specific Secure Agent service (e.g. Data Integration Server).
+
+ 59. idmc_get_agent_installer_info
+       Description: Get the install token and download URL for a Secure Agent installer.
+
+## Runtime Environments (6 tools)
+----------------------------------------------------------------------
+ 60. idmc_get_runtime_environments
+       Description: List all Secure Agent runtime environments. Optionally get a specific one by env_id.
+
+ 61. idmc_create_runtime_environment
+       Description: Create a new Secure Agent group (runtime environment).
+
+ 62. idmc_update_runtime_environment
+       Description: Update a Secure Agent group — rename it or add/remove agents.
+
+ 63. idmc_delete_runtime_environment
+       Description: Delete a Secure Agent group by ID.
+
+ 64. idmc_get_runtime_environment_selections
+       Description: Get enabled/disabled services and connectors for a Secure Agent group.
+
+ 65. idmc_update_runtime_environment_selections
+       Description: Enable or disable services and connectors for a Secure Agent group.
+
+## Connections (9 tools)
+----------------------------------------------------------------------
+ 66. idmc_list_connections
+       Description: List all available source connections in the organisation.
+
+ 67. idmc_create_connection
+       Description: Create a new connection in the organisation (Salesforce, Oracle, MySQL, S3, etc.).
+
+ 68. idmc_update_connection
+       Description: Update an existing connection by connection ID.
+
+ 69. idmc_delete_connection
+       Description: Delete a connection by ID.
+
+ 70. idmc_test_connection
+       Description: Test whether a connection is working.
+
+ 71. idmc_migrate_connection
+       Description: Migrate assets from an old connector version to the latest version within a project.
+
+ 72. idmc_list_connectors
+       Description: List all connectors available to the organisation.
+
+ 73. idmc_get_connector_metadata
+       Description: Get attribute metadata for a specific connector type (useful before creating a connection).
+
+ 74. idmc_get_connection_objects
+       Description: List all tables / files available in a connection.
+
+## Projects & Folders (10 tools)
+----------------------------------------------------------------------
+ 75. idmc_list_projects
+       Description: List all projects. Optionally filter by name. Supports pagination via limit/offset.
+
+ 76. idmc_create_project
+       Description: Create a new project to organise profiling tasks.
+
+ 77. idmc_update_project
+       Description: Update a project's name or description.
+
+ 78. idmc_delete_project
+       Description: Delete an empty project (must contain no assets or folders).
+
+ 79. idmc_list_folders
+       Description: List all folders inside a project by project ID.
+
+ 80. idmc_create_folder
+       Description: Create a folder inside an existing project.
+
+ 81. idmc_update_folder
+       Description: Update a folder's name or description inside a project.
+
+ 82. idmc_delete_folder
+       Description: Delete an empty folder from a project.
+
+ 83. idmc_list_project_assets
+       Description: Recursively list ALL assets inside a project, including assets nested in subfolders. Performs a two-phase fetch: phase 1 discovers top-level folders, phase 2 fans out to every subfolder in parallel. Returns a flat table with columns: project, folder, path, asset_name, type, updated_on, updated_by, description, tags. Use this instead of idmc_list_assets when you need a complete project inventory.
+
+ 84. idmc_list_assets
+       Description: Find and list assets in the organisation using filters (type, location, tag, updateTime, updatedBy).
+
+## Schedules (4 tools)
+----------------------------------------------------------------------
+ 85. idmc_get_schedules
+       Description: List schedules in the organisation. Filter with query (e.g. status=='Enabled') or get by schedule_id.
+
+ 86. idmc_create_schedule
+       Description: Create a new schedule. Supports minutely, hourly, daily, weekly, biweekly, or monthly intervals.
+
+ 87. idmc_update_schedule
+       Description: Update an existing schedule (name, status, interval, times).
+
+ 88. idmc_delete_schedule
+       Description: Delete a schedule from the organisation.
+
+## Mappings & Tasks (11 tools)
+----------------------------------------------------------------------
+ 89. idmc_list_mappings
+       Description: List all mappings in the organisation.
+
+ 90. idmc_get_mapping
+       Description: Get details of a mapping by ID or name.
+
+ 91. idmc_get_mapping_transformations
+       Description: Get advanced transformation properties and sequence details for a mapping.
+
+ 92. idmc_list_mapping_tasks
+       Description: List all mapping tasks in the organisation.
+
+ 93. idmc_get_mapping_task
+       Description: Get details of a mapping task by ID, federated ID, or name.
+
+ 94. idmc_create_mapping_task
+       Description: Create a new mapping task based on an existing mapping.
+
+ 95. idmc_update_mapping_task
+       Description: Update an existing mapping task by task ID or federated ID.
+
+ 96. idmc_delete_mapping_task
+       Description: Delete a mapping task by task ID.
+
+ 97. idmc_list_pc_mapplets
+       Description: List all PowerCenter mapplets in the organisation.
+
+ 98. idmc_get_pc_mapplet
+       Description: Get details of a PowerCenter mapplet by ID or name.
+
+ 99. idmc_delete_pc_mapplet
+       Description: Delete a PowerCenter mapplet by ID.
+
+## DI Jobs & Activity (17 tools)
+----------------------------------------------------------------------
+100. idmc_get_di_tasks
+       Description: List Data Integration tasks by type (MTT, DSS, DRS, DMASK, PCS). Returns task IDs and names.
+
+101. idmc_start_di_job
+       Description: Start a Data Integration task (mapping task, replication, synchronisation, linear taskflow, etc.).
+
+102. idmc_stop_di_job
+       Description: Stop a running Data Integration task. Use clean_stop=true for a graceful stop.
+
+103. idmc_get_di_job_log_entries
+       Description: Get completed DI job log entries from Operational Insights. Filter by status, asset type, time range.
+
+104. idmc_get_job
+       Description: Get status and step details of a profiling job by job ID.
+
+105. idmc_get_running_jobs
+       Description: Get all currently running jobs for a profile.
+
+106. idmc_stop_job
+       Description: Stop a running profiling job.
+
+107. idmc_resume_job
+       Description: Resume a stopped profiling job.
+
+108. idmc_get_activity_log
+       Description: Get completed job activity logs. Filter by task ID, run ID, or paginate with offset/row_limit.
+
+109. idmc_get_activity_monitor
+       Description: Get currently running jobs from the activity monitor.
+
+110. idmc_get_run_detail
+       Description: Get detailed info about a specific profile run.
+
+111. idmc_list_run_details
+       Description: List all historical runs for a profile.
+
+112. idmc_delete_run_details
+       Description: Delete one or more historical profile runs to free storage.
+
+113. idmc_get_top_n_runs
+       Description: Identify the profile runs that consume the most storage space.
+
+114. idmc_get_session_log
+       Description: Download the session log for a completed activity log entry. Returns base64-encoded ZIP content.
+
+115. idmc_get_session_logs
+       Description: Download session logs for a specific job step.
+
+116. idmc_get_error_log
+       Description: Download the error log for a specific activity log entry.
+
+## Taskflows (8 tools)
+----------------------------------------------------------------------
+117. idmc_list_linear_taskflows
+       Description: List all linear taskflows in the organisation.
+
+118. idmc_get_linear_taskflow
+       Description: Get details of a linear taskflow by ID or name.
+
+119. idmc_create_linear_taskflow
+       Description: Create a new linear taskflow containing a sequence of DI tasks.
+
+120. idmc_update_linear_taskflow
+       Description: Update an existing linear taskflow.
+
+121. idmc_delete_linear_taskflow
+       Description: Delete a linear taskflow by ID.
+
+122. idmc_publish_taskflows
+       Description: Publish one or more advanced taskflows in bulk.
+
+123. idmc_unpublish_taskflows
+       Description: Unpublish one or more advanced taskflows in bulk.
+
+124. idmc_get_taskflow_status
+       Description: Get the execution status of a published (advanced) taskflow run.
+
+## Mass Ingestion (7 tools)
+----------------------------------------------------------------------
+125. idmc_list_mi_tasks
+       Description: List all file ingestion and replication (MI) tasks in the organisation.
+
+126. idmc_create_mi_task
+       Description: Create a file ingestion and replication (MI) task.
+
+127. idmc_update_mi_task
+       Description: Update an existing file ingestion and replication (MI) task.
+
+128. idmc_delete_mi_task
+       Description: Delete a file ingestion and replication (MI) task by ID.
+
+129. idmc_run_mi_task_job
+       Description: Run a file ingestion and replication (MI) task job by task ID.
+
+130. idmc_get_mi_task_job_status
+       Description: Get the status of a running or completed file ingestion job by run ID.
+
+131. idmc_get_mi_activity_log
+       Description: Get the activity log for file ingestion and replication jobs. Filter by task ID or run ID.
+
+## Ingestion / CDC (10 tools)
+----------------------------------------------------------------------
+132. idmc_get_ingestion_task_id
+       Description: Look up an ingestion task's numeric ID by task name, project ID, or folder ID.
+
+133. idmc_get_ingestion_task_details
+       Description: Get full task definition details for ingestion tasks. Filter by taskId, projectId, or folderId.
+
+134. idmc_create_ingestion_task
+       Description: Create a database (DBMI) or application (APPMI) ingestion and replication task.
+
+135. idmc_deploy_ingestion_task
+       Description: Deploy an ingestion task by numeric task ID. Deployment runs asynchronously.
+
+136. idmc_undeploy_ingestion_job
+       Description: Undeploy an ingestion job (must be in Stopped, Failed, Aborted, or Completed state).
+
+137. idmc_start_ingestion_job
+       Description: Start an ingestion job by job ID. Get the job ID first using get_ingestion_task_id + fetch job ID.
+
+138. idmc_stop_ingestion_job
+       Description: Stop a running ingestion job.
+
+139. idmc_resume_ingestion_job
+       Description: Resume a stopped/failed ingestion job, optionally with schema drift resolution options.
+
+140. idmc_get_ingestion_job_status
+       Description: Get the current status of an ingestion job.
+
+141. idmc_get_ingestion_job_metrics
+       Description: Get detailed statistics and per-table metrics for an ingestion job.
+
+## Data Profiling (21 tools)
+----------------------------------------------------------------------
+142. idmc_list_profiles
+       Description: List all profiles. Can filter by name, project, folder. Use exact_match=true to find an exact profile name. Supports pagination via limit/offset.
+
+143. idmc_get_profile
+       Description: Get full definition of a profile by its ID.
+
+144. idmc_create_profile
+       Description: Create a new data profiling task. Requires a connection_id, source object name, and list of fields to profile.
+
+145. idmc_update_profile
+       Description: Update an existing profile definition. Specify only the fields you want to change; all fields are optional except profile_id.
+
+146. idmc_delete_profile
+       Description: Permanently delete a profile and all its run history.
+
+147. idmc_run_profile
+       Description: Execute / run a data profiling task by its ID.
+
+148. idmc_suggest_profile_name
+       Description: Get an auto-suggested name for a new profile (e.g. Profile32).
+
+149. idmc_get_top_n_profile_tasks
+       Description: Identify the profile tasks that consume the most storage space.
+
+150. idmc_export_profile_results
+       Description: Export profile results to Excel. Returns base64-encoded file content.
+
+151. idmc_get_column
+       Description: Get detailed statistics for one specific column by column ID.
+
+152. idmc_list_columns
+       Description: List all profiled columns with statistics (null%, distinct%, patterns, etc.).
+
+153. idmc_get_column_datatypes
+       Description: Get inferred data types for a column.
+
+154. idmc_get_column_patterns
+       Description: Get inferred data patterns and their frequencies for a column.
+
+155. idmc_get_value_frequencies
+       Description: Get top-N value frequencies (value counts) for a column.
+
+156. idmc_get_rule_ids
+       Description: Return the unique frsRuleId and ruleId for a rule associated with a profile. Used when adding rules to profiles or looking up rule column IDs.
+
+157. idmc_get_data_preview
+       Description: Preview sample rows from a source or target object via a DI connection.
+
+158. idmc_get_object_fields
+       Description: List all columns / fields in a source table or file.
+
+159. idmc_validate_expression
+       Description: Validate a Data Integration expression against a source object.
+
+160. idmc_get_insights
+       Description: Retrieve CLAIRE AI-generated data quality insights for a profile.
+
+161. idmc_update_insights
+       Description: Approve or reject CLAIRE insights recommendations.
+
+162. idmc_execute_query
+       Description: Run an existing query by its ID.
+
+## Queries (6 tools)
+----------------------------------------------------------------------
+163. idmc_list_queries
+       Description: List all queries associated with a profile.
+
+164. idmc_get_query
+       Description: Get full details of a specific query by its ID.
+
+165. idmc_create_query
+       Description: Create a query to filter or drill-down into profile results. queryType: PERSISTENT (queries source) or DRILLDOWN (filters results).
+
+166. idmc_update_query
+       Description: Update an existing query. Specify only the fields you want to change.
+
+167. idmc_delete_query
+       Description: Delete a query by its ID.
+
+168. idmc_get_query_results
+       Description: Retrieve results from an executed query.
+
+## Firewall Configs (4 tools)
+----------------------------------------------------------------------
+169. idmc_list_fwconfigs
+       Description: List all fixed-width format configurations in the organisation.
+
+170. idmc_get_fwconfig
+       Description: Get a fixed-width format configuration by ID or name.
+
+171. idmc_create_fwconfig
+       Description: Create a fixed-width format configuration for flat file sources/targets.
+
+172. idmc_delete_fwconfig
+       Description: Delete a fixed-width format configuration by ID.
+
+## Asset Management & Version Control (24 tools)
+----------------------------------------------------------------------
+173. idmc_lookup_object
+       Description: Look up one or more IDMC objects by path+type or by ID. Returns federated IDs needed for jobs.
+
+174. idmc_assign_tags
+       Description: Assign one or more tags to assets (up to 100 assets per call).
+
+175. idmc_remove_asset_tags
+       Description: Remove one or more tags from assets (up to 100 assets per call).
+
+176. idmc_get_asset_dependencies
+       Description: Get objects that an asset uses ('uses') or objects that use the asset ('usedBy').
+
+177. idmc_check_object_access
+       Description: Check the current user's access rights on a specific object or asset type within a container.
+
+178. idmc_get_object_permissions
+       Description: Get permissions set on a specific IICS object (project, folder, asset).
+
+179. idmc_create_object_permission
+       Description: Set permissions on an IICS object for a user or group.
+
+180. idmc_update_object_permission
+       Description: Update an existing ACL (permission entry) on an IDMC object.
+
+181. idmc_delete_object_permission
+       Description: Remove permissions from an IICS object.
+
+182. idmc_checkout_objects
+       Description: Check out source-controlled objects so they can be edited (locks them).
+
+183. idmc_checkin_objects
+       Description: Check updated objects in to the source control repository.
+
+184. idmc_undo_checkout
+       Description: Undo a source control checkout, reverting the object to its last pulled version.
+
+185. idmc_get_commit_history
+       Description: Get source control commit history for all objects or a specific asset/project.
+
+186. idmc_get_commit_details
+       Description: Get details about a specific source control commit (changed objects, author, message).
+
+187. idmc_compare_object_versions
+       Description: Compare two versions of a source-controlled asset to see differences.
+
+188. idmc_pull_objects
+       Description: Pull (load) objects from the source control repository into the IDMC org.
+
+189. idmc_get_source_control_action_status
+       Description: Get the status of a source control operation (pull, push, checkout, checkin).
+
+190. idmc_download_object_states
+       Description: Download the object states ZIP package from a completed fetchState job. Returns base64-encoded content.
+
+191. idmc_get_fetch_state_status
+       Description: Get the status of a fetchState job.
+
+192. idmc_start_fetch_state
+       Description: Start a fetchState job to capture object states (sequence values, in-out params) for migration.
+
+193. idmc_get_load_state_status
+       Description: Get the status of a loadState job.
+
+194. idmc_start_load_state
+       Description: Start a loadState job to synchronise object states into the target org.
+
+195. idmc_upload_load_state_package
+       Description: Upload an object states ZIP to the target org to prepare for loadState.
+
+196. idmc_get_last_successful_run_key
+       Description: Return the run key of the most recent successful profile run. Identify by profile ID, name, project, or folder.
+
+## Import / Export & Bundles (9 tools)
+----------------------------------------------------------------------
+197. idmc_start_export_job
+       Description: Start an export job to package IDMC assets (mappings, tasks, connections, schedules, etc.) into a ZIP file.
+
+198. idmc_get_export_job_status
+       Description: Get the status of an export job. Use expand_objects=true to see per-object status.
+
+199. idmc_download_export_package
+       Description: Download the export ZIP package once the export job is SUCCESSFUL. Returns base64-encoded content.
+
+200. idmc_start_import_job
+       Description: Start an import job using the job ID from upload_import_package. Specify conflict resolution.
+
+201. idmc_get_import_job_status
+       Description: Get the status of an import job. Use expand_objects=true for per-object status.
+
+202. idmc_upload_import_package
+       Description: Upload an export ZIP file to prepare it for import. Returns the import job ID.
+
+203. idmc_get_bundle
+       Description: Get bundle details by bundle ID or name. Omit both to list all bundles.
+
+204. idmc_install_bundle
+       Description: Install a bundle on the organisation by bundle object ID.
+
+205. idmc_uninstall_bundle
+       Description: Uninstall a bundle from the organisation.
+
+## Metering (3 tools)
+----------------------------------------------------------------------
+206. idmc_start_metering_export
+       Description: Start a metering data export job. job_type: SUMMARY, PROJECT_FOLDER, or ASSET.
+
+207. idmc_get_metering_export_status
+       Description: Get the status of a metering data export job.
+
+208. idmc_download_metering_data
+       Description: Download the metering data ZIP file once the export job status is SUCCESS. Returns base64-encoded content.
+
+======================================================================
+End of list — 208 tools total

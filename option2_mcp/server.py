@@ -89,7 +89,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
 
     # Run the (potentially blocking) executor in a thread pool so we don't
     # block the asyncio event loop.
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, executor.execute, name, arguments)
 
     result_str = json.dumps(result, indent=2, default=str)
