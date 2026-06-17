@@ -1,15 +1,14 @@
 """
-Informatica Cloud Data Profiling - Tool Executor
-Maps tool names + inputs from Claude to actual API client calls.
-Shared by both Option 1 (agent) and Option 2 (MCP server).
+IDMC MCP Server - Tool Executor
+Maps tool names + inputs to API client calls.
 """
 
 import base64
 import json
 import os
 from typing import Any
-from .api_client import InformaticaAPIClient, Session, InformaticaAPIError
-from .credential_prompt import collect_credentials_via_dialog
+from api_client import InformaticaAPIClient, Session, InformaticaAPIError
+from credential_prompt import collect_credentials_via_dialog
 
 
 def _to_base64(content: bytes, filename: str) -> dict:
@@ -89,9 +88,12 @@ def _build_create_profile_payload(inputs: dict) -> dict:
         },
         "drillDownType": "ON" if inputs.get("drill_down", True) else "OFF",
         "runtimeOptions": {
-            "defaultEmailNotification": True,
+            "scheduleId": inputs.get("schedule_id"),
+            "runtimeEnvironmentId": inputs.get("runtime_environment_id"),
+            "defaultEmailNotification": inputs.get("default_email_notification", True),
             "profileAdvProps": {
                 "enableClaireAnomalyDetection": enable_claire,
+                **{k: v for k, v in (inputs.get("profile_adv_props") or {}).items()},
             },
         },
     }
@@ -102,6 +104,24 @@ def _build_create_profile_payload(inputs: dict) -> dict:
         payload["frsFolderId"] = inputs["frs_folder_id"]
     if filters:
         payload["filters"] = filters
+
+    # Attach rules to the source object if provided
+    rules_raw = inputs.get("rules", [])
+    if rules_raw:
+        rules = []
+        for r in rules_raw:
+            rule_entry = {
+                "name":        r["name"],
+                "description": r.get("description"),
+                "frsId":       r["frsId"],
+                "ruleType":    r.get("ruleType", "RULE_SPECIFICATION"),
+            }
+            if r.get("inFields"):
+                rule_entry["inFields"] = r["inFields"]
+            if r.get("outFields"):
+                rule_entry["outFields"] = r["outFields"]
+            rules.append(rule_entry)
+        payload["source"]["rules"] = rules
 
     return payload
 
@@ -251,6 +271,21 @@ class ToolExecutor:
             return c.get_profile(inp["profile_id"])
 
         if tool_name == "idmc_create_profile":
+            # Resolve federatedId and auto-detect data_source_type from connection metadata
+            conn = c.list_connections(connection_id=inp["connection_id"])
+            if isinstance(conn, dict) and "federatedId" in conn:
+                inp = dict(inp)
+                inp["connection_id"] = conn["federatedId"]
+                if not inp.get("data_source_type") or inp.get("data_source_type") == "UNSET":
+                    _type_map = {
+                        "CSVFile": "DELIMITED",
+                        "Oracle": "ORACLE",
+                        "SqlServer": "SQLSERVER",
+                        "PostgreSQL": "POSTGRESQL",
+                        "Snowflake Data Cloud": "SNOWFLAKE",
+                        "Amazon S3 v2": "S3",
+                    }
+                    inp["data_source_type"] = _type_map.get(conn.get("instanceDisplayName", ""), "UNSET")
             payload = _build_create_profile_payload(inp)
             return c.create_profile(payload)
 
@@ -351,7 +386,7 @@ class ToolExecutor:
             return c.list_columns(inp["profile_id"])
 
         if tool_name == "idmc_get_column":
-            return c.get_column(inp["profile_id"], inp["column_id"])
+            return c.get_column(inp["profile_id"], inp["column_id"], inp.get("run_key"))
 
         if tool_name == "idmc_get_column_patterns":
             return c.get_column_patterns(inp["profile_id"], inp["column_id"])
@@ -364,7 +399,14 @@ class ToolExecutor:
 
         if tool_name == "idmc_export_profile_results":
             content = c.export_profile_results(
-                inp["profile_id"], inp.get("run_key", 1)
+                inp["profile_id"],
+                profile_name=inp.get("profile_name", "profile_results"),
+                run_key=inp.get("run_key", 1),
+                range_type=inp.get("range_type", "ALL_COLUMNS"),
+                column_ids=inp.get("column_ids"),
+                file_format=inp.get("file_format", "EXCEL"),
+                scopes=inp.get("scopes"),
+                code_page=inp.get("code_page", "ASCII"),
             )
             return _to_base64(content, "profile_results.xlsx")
 

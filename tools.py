@@ -262,7 +262,7 @@ TOOLS = [
                 },
                 "data_source_type": {
                     "type": "string",
-                    "description": "e.g. ORACLE, FLATFILE, UNSET",
+                    "description": "e.g. ORACLE, DELIMITED, SQLSERVER, POSTGRESQL, SNOWFLAKE, S3, UNSET. Auto-detected from connection type if omitted.",
                     "default": "UNSET",
                 },
                 "sampling_type": {
@@ -284,6 +284,68 @@ TOOLS = [
                     "type": "boolean",
                     "description": "Enable CLAIRE AI anomaly detection",
                     "default": False,
+                },
+                "runtime_environment_id": {
+                    "type": "string",
+                    "description": "Runtime environment (Secure Agent group) ID to run the profile on.",
+                },
+                "schedule_id": {
+                    "type": "string",
+                    "description": "Schedule ID to attach to the profile for recurring runs.",
+                },
+                "default_email_notification": {
+                    "type": "boolean",
+                    "description": "Send email notifications on job completion. Default true.",
+                    "default": True,
+                },
+                "profile_adv_props": {
+                    "type": "object",
+                    "description": (
+                        "Advanced profiling options. Supported keys: maxTopN (int), maxPatterns (int), "
+                        "maxPatternThresholdPercent (number), maxRanks (int), inferDateTime (bool), "
+                        "detectOutliers (bool), maxColumnsPerMapping (int), minNoOfRowsForSplitMapping (int), "
+                        "maxMemory (int), maxPercentMemory (int), stopOnErrors (int)."
+                    ),
+                },
+                "rules": {
+                    "type": "array",
+                    "description": "Rule specifications (mapplets) to attach to the source object.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name":        {"type": "string"},
+                            "description": {"type": "string"},
+                            "frsId":       {"type": "string", "description": "FRS document ID of the rule asset"},
+                            "ruleType":    {"type": "string", "description": "e.g. RULE_SPECIFICATION, VERIFIER"},
+                            "inFields": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name":      {"type": "string"},
+                                        "label":     {"type": "string"},
+                                        "dataType":  {"type": "string"},
+                                        "precision": {"type": "integer"},
+                                        "scale":     {"type": "integer"},
+                                    },
+                                },
+                            },
+                            "outFields": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name":      {"type": "string"},
+                                        "label":     {"type": "string"},
+                                        "dataType":  {"type": "string"},
+                                        "precision": {"type": "integer"},
+                                        "scale":     {"type": "integer"},
+                                    },
+                                },
+                            },
+                        },
+                        "required": ["name", "frsId"],
+                    },
                 },
                 "filter_enabled": {"type": "boolean", "default": False},
                 "filters": {
@@ -573,7 +635,8 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "profile_id": {"type": "string"},
-                "column_id": {"type": "string"},
+                "column_id":  {"type": "string"},
+                "run_key":    {"type": "integer", "description": "Run key of the profile run to query. Defaults to the latest run (1)."},
             },
             "required": ["profile_id", "column_id"],
         },
@@ -640,8 +703,14 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "profile_id": {"type": "string"},
-                "run_key": {"type": "integer", "default": 1},
+                "profile_id":   {"type": "string"},
+                "profile_name": {"type": "string", "description": "Profile name used in the exported filename. Default 'profile_results'."},
+                "run_key":      {"type": "integer", "description": "Run key of the profile run to export. Default 1.", "default": 1},
+                "range_type":   {"type": "string", "description": "Columns to export: 'ALL_COLUMNS' (default) or 'SELECTED_COLUMNS'.", "default": "ALL_COLUMNS"},
+                "column_ids":   {"type": "array", "items": {"type": "string"}, "description": "Column IDs to include when range_type is 'SELECTED_COLUMNS'."},
+                "file_format":  {"type": "string", "description": "Export format. Default 'EXCEL'.", "default": "EXCEL"},
+                "scopes":       {"type": "array", "items": {"type": "string"}, "description": "Result scopes to include. Defaults to all: SUMMARY, VALUE_FREQUENCY, STATISTICS, PATTERNS, DATATYPES."},
+                "code_page":    {"type": "string", "description": "Character encoding. Default 'ASCII'.", "default": "ASCII"},
             },
             "required": ["profile_id"],
         },

@@ -1,14 +1,13 @@
 """
-Option 2 – Informatica Profiling MCP Server
-Exposes every API endpoint as an MCP tool so it is available directly
-inside Claude Code (or Claude Desktop) via natural language.
+IDMC MCP Server
+Exposes IDMC REST APIs as MCP tools for use in Claude Code.
 
-Registration in .claude/settings.json:
+Registration in .mcp.json:
     {
       "mcpServers": {
-        "informatica-profiling": {
+        "idmc-rest-api": {
           "command": "python",
-          "args": ["<absolute-path>/option2_mcp/server.py"]
+          "args": ["C:/Softwares/idmc-rest-api_endusers/server.py"]
         }
       }
     }
@@ -20,11 +19,10 @@ import json
 import asyncio
 import logging
 
-# Allow importing the shared package from the parent directory
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
 
-from shared.tools import TOOLS
-from shared.tool_executor import ToolExecutor
+from tools import TOOLS
+from tool_executor import ToolExecutor
 
 import mcp.types as types
 from mcp.server import Server
@@ -37,11 +35,11 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s – %(message)s",
     handlers=[logging.StreamHandler(sys.stderr)],
 )
-log = logging.getLogger("informatica-profiling-mcp")
+log = logging.getLogger("idmc-mcp")
 
 # ── Server ────────────────────────────────────────────────────────────────────
 
-app = Server("informatica-profiling")
+app = Server("idmc-rest-api")
 executor = ToolExecutor()
 
 
@@ -101,7 +99,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 async def main():
-    log.info("Starting Informatica Profiling MCP Server...")
+    log.info("Starting IDMC MCP Server...")
     async with stdio_server() as (read_stream, write_stream):
         await app.run(
             read_stream,

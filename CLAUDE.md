@@ -22,7 +22,7 @@ Credentials are stored in `.mcp.json` under `mcpServers.idmc-rest-api.env`. The 
 
 ```bash
 # Direct launch for debugging (normally auto-launched by Claude Code via MCP)
-python option2_mcp/server.py
+python server.py
 ```
 
 ## Architecture
@@ -30,24 +30,24 @@ python option2_mcp/server.py
 Three-tier layered design:
 
 ```
-Claude Code → MCP Protocol → option2_mcp/server.py
-                                      ↓
-                           shared/tool_executor.py
-                                      ↓
-                            shared/api_client.py
-                                      ↓
-                         Informatica Cloud REST APIs
+Claude Code → MCP Protocol → server.py
+                                  ↓
+                           tool_executor.py
+                                  ↓
+                            api_client.py
+                                  ↓
+                     Informatica Cloud REST APIs
 ```
 
-**`option2_mcp/server.py`** — MCP server entry point. Lists tools, routes calls to executor, redacts credentials in stderr logs.
+**`server.py`** — MCP server entry point. Lists tools, routes calls to executor, redacts credentials in stderr logs.
 
-**`shared/tool_executor.py`** — Maps 101+ tool names to `api_client` methods. Builds complex nested payloads for profile creation, queries, and DI jobs. Central dispatcher for all tool calls.
+**`tool_executor.py`** — Maps 151+ tool names to `api_client` methods. Builds complex nested payloads for profile creation, queries, and DI jobs. Central dispatcher for all tool calls.
 
-**`shared/api_client.py`** — REST client wrapper. Manages session state (`session_id`, `base_url`, `pod_region`). Supports API versions v1, v2, v3, and FRS. Handles two header formats (`IDS-SESSION-ID` vs `icSessionId`).
+**`api_client.py`** — REST client wrapper. Manages session state (`session_id`, `base_url`, `pod_region`). Supports API versions v1, v2, v3, and FRS. Handles two header formats (`IDS-SESSION-ID` vs `icSessionId`).
 
-**`shared/tools.py`** — JSON schema definitions for all 101 tools. Single source of truth used by both `server.py` (for listing) and `tool_executor.py` (for dispatch).
+**`tools.py`** — JSON schema definitions for all tools. Single source of truth used by both `server.py` (for listing) and `tool_executor.py` (for dispatch).
 
-**`shared/credential_prompt.py`** — Tkinter native OS login dialog used by `setup_credentials.py`.
+**`credential_prompt.py`** — Tkinter native OS login dialog used by `setup_credentials.py`.
 
 ## Multi-Region Support
 
@@ -67,9 +67,9 @@ Different IDMC service endpoints use different API versions:
 
 ## Adding a New Tool
 
-1. Add the JSON schema definition to `shared/tools.py` in the `TOOLS` list
-2. Add the executor mapping in `shared/tool_executor.py` inside `execute_tool()`
-3. Add the corresponding API method in `shared/api_client.py`
+1. Add the JSON schema definition to `tools.py` in the `TOOLS` list
+2. Add the executor mapping in `tool_executor.py` inside `_dispatch()`
+3. Add the corresponding API method in `api_client.py`
 
 The tool name in `tools.py` must exactly match the key used in `tool_executor.py`.
 

@@ -233,9 +233,8 @@ class InformaticaAPIClient:
         source_type: str = "oracle",
         flat_file_attrs: Optional[dict] = None,
     ) -> list:
-        di_id = self._resolve_di_connection_id(connection_id)
         url = self._frs_url(
-            f"saas/api/v2/connection/source/{di_id}/field/{object_name}"
+            f"saas/api/v2/connection/source/{connection_id}/field/{object_name}"
         )
         if source_type.lower() in ("flatfile", "flat_file", "csvfile"):
             body = flat_file_attrs or {
@@ -246,11 +245,10 @@ class InformaticaAPIClient:
                 "firstDataRow": 2,
                 "headerLineNo": 1,
             }
-            params = {}
+            resp = requests.post(url, headers=self._di_headers(), json=body)
         else:
-            body = flat_file_attrs or {}
-            params = {"validateFields": "false"}
-        resp = requests.post(url, headers=self._di_headers(), json=body, params=params)
+            # Oracle and other relational connectors use GET
+            resp = requests.get(url, headers=self._di_headers())
         return self._check(resp)
 
     # ------------------------------------------------------------------
@@ -434,11 +432,14 @@ class InformaticaAPIClient:
         resp = requests.get(url, headers=self._headers())
         return self._check(resp)
 
-    def get_column(self, profile_id: str, column_id: str) -> dict:
+    def get_column(self, profile_id: str, column_id: str, run_key: Optional[int] = None) -> dict:
         url = self._profiling_url(
             f"metric-store/api/v1/odata/Profiles('{profile_id}')/Columns('{column_id}')"
         )
-        resp = requests.get(url, headers=self._headers())
+        params = {}
+        if run_key is not None:
+            params["runKey"] = run_key
+        resp = requests.get(url, headers=self._headers(), params=params)
         return self._check(resp)
 
     def get_column_patterns(self, profile_id: str, column_id: str) -> dict:
@@ -465,13 +466,32 @@ class InformaticaAPIClient:
     def export_profile_results(
         self,
         profile_id: str,
+        profile_name: str = "profile_results",
         run_key: int = 1,
-        range_type: str = "All Columns",
-        file_format: str = "Excel",
+        range_type: str = "ALL_COLUMNS",
+        column_ids: Optional[list] = None,
+        file_format: str = "EXCEL",
+        scopes: Optional[list] = None,
+        code_page: str = "ASCII",
     ) -> bytes:
+        if scopes is None:
+            scopes = ["SUMMARY", "VALUE_FREQUENCY", "STATISTICS", "PATTERNS", "DATATYPES"]
         url = self._profiling_url(f"metric-store/api/v1/Profiles('{profile_id}')/Export")
-        params = {"runKey": run_key, "range": range_type, "fileFormat": file_format}
-        resp = requests.get(url, headers=self._headers(), params=params)
+        params: list = [
+            ("fileName", f"{profile_name}_Run{run_key}"),
+            ("profileId", profile_id),
+            ("runKey", run_key),
+            ("range", range_type),
+        ]
+        for s in scopes:
+            params.append(("scope", s))
+        params.append(("fileFormat", file_format))
+        params.append(("codePage", code_page))
+        if column_ids:
+            for cid in column_ids:
+                params.append(("columnIds", cid))
+        headers = {**self._headers(), "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/octet-stream, */*"}
+        resp = requests.get(url, headers=headers, params=params)
         return resp.content
 
     # ------------------------------------------------------------------
@@ -1875,6 +1895,10 @@ class InformaticaAPIClient:
     # ------------------------------------------------------------------
     # Data Integration – Data Preview
     # ------------------------------------------------------------------
+
+    def _resolve_di_connection_id(self, connection_id: str) -> str:
+        """Return the DI connection ID. For now the platform ID and DI ID are the same."""
+        return connection_id
 
     def get_data_preview(
         self,
