@@ -101,7 +101,8 @@
       "mcp__idmc-rest-api__idmc_get_job",
       "mcp__idmc-rest-api__idmc_list_columns",
       "mcp__idmc-rest-api__idmc_export_profile_results",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(sed 's/.*\"name\":\\\\s*\"\\\\\\([^\"]*\\\\\\)\".*/\\\\1/')"
     ],
     "additionalDirectories": [
       "C:\\Users\\sunilkumar.cherukuri\\AppData\\Roaming\\Code\\User"

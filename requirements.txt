@@ -1,5 +1,2 @@
-# Shared
 requests>=2.31.0
-
-# Option 2 – MCP server
 mcp>=1.0.0

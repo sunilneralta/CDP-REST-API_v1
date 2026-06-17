@@ -1,6 +1,6 @@
 # IDMC REST API — MCP Server
 
-A **Model Context Protocol (MCP) server** that exposes **151 Informatica Intelligent Data Management Cloud (IDMC) REST API endpoints** as callable tools inside Claude Code. Interact with IDMC entirely through natural language — no manual API calls required.
+A **Model Context Protocol (MCP) server** that exposes **212 Informatica Intelligent Data Management Cloud (IDMC) REST API endpoints** as callable tools inside Claude Code. Interact with IDMC entirely through natural language — no manual API calls required.
 
 ---
 
@@ -16,18 +16,18 @@ Informatica IDMC provides a rich set of REST APIs for data profiling, data integ
 - Create and manage connections, mappings, and taskflows
 - Administer schedules, runtime environments, and secure agents
 - Export/import assets, manage source control, handle SAML/SSO
-- And much more — 151 tools in total
+- And much more — 212 tools in total
 
 **How it works:**
 
 ```
-Claude Code → MCP Protocol → option2_mcp/server.py
-                                       ↓
-                            shared/tool_executor.py
-                                       ↓
-                             shared/api_client.py
-                                       ↓
-                          Informatica Cloud REST APIs
+Claude Code → MCP Protocol → server.py
+                                  ↓
+                           tool_executor.py
+                                  ↓
+                            api_client.py
+                                  ↓
+                     Informatica Cloud REST APIs
 ```
 
 The server auto-launches when Claude Code starts; you never need to run it manually.
@@ -116,12 +116,12 @@ To verify it's running, open Claude Code and type:
 What IDMC tools do you have available?
 ```
 
-Claude will list all 151 tools if the server is connected.
+Claude will list all 212 tools if the server is connected.
 
 ### Optional — Manual server launch (debugging)
 
 ```bash
-python option2_mcp/server.py
+python server.py
 ```
 
 Logs are written to `stderr` with timestamps. Credentials are automatically redacted in logs.
@@ -612,25 +612,23 @@ The entire workflow above requires zero knowledge of the IDMC REST API — Claud
 
 ```
 idmc-rest-api_endusers/
-├── option2_mcp/
-│   └── server.py              # MCP server entry point
-├── shared/
-│   ├── tools.py               # JSON schema for all 151 tools (source of truth)
-│   ├── tool_executor.py       # Maps tool names → api_client methods
-│   ├── api_client.py          # REST client, session state, payload builders
-│   └── credential_prompt.py  # Native OS login dialog (Tkinter)
-├── setup_credentials.py       # Credential setup utility
+├── server.py              # MCP server entry point
+├── tool_executor.py       # Maps tool names → api_client methods
+├── api_client.py          # REST client, session state, payload builders
+├── tools.py               # JSON schema for all 212 tools (source of truth)
+├── credential_prompt.py   # Native OS login dialog (Tkinter)
+├── setup_credentials.py   # Credential setup utility
 ├── requirements.txt
-├── .mcp.json                  # MCP server config (contains credentials)
+├── .mcp.json              # MCP server config (contains credentials)
 └── .claude/
     └── settings.local.json    # Claude Code MCP enablement config
 ```
 
 ### Adding a New Tool
 
-1. Add the JSON schema definition to `shared/tools.py` in the `TOOLS` list
-2. Add the executor mapping in `shared/tool_executor.py` inside `execute_tool()`
-3. Add the corresponding API method in `shared/api_client.py`
+1. Add the JSON schema definition to `tools.py` in the `TOOLS` list
+2. Add the executor mapping in `tool_executor.py` inside `_dispatch()`
+3. Add the corresponding API method in `api_client.py`
 
 The tool name in `tools.py` must exactly match the key used in `tool_executor.py`.
 
