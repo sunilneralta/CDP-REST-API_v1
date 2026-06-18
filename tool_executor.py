@@ -312,21 +312,28 @@ class ToolExecutor:
             return c.get_profile(inp["profile_id"])
 
         if tool_name == "idmc_create_profile":
-            # Resolve federatedId and auto-detect data_source_type from connection metadata
-            conn = c.list_connections(connection_id=inp["connection_id"])
-            if isinstance(conn, dict) and "federatedId" in conn:
-                inp = dict(inp)
-                inp["connection_id"] = conn["federatedId"]
-                if not inp.get("data_source_type") or inp.get("data_source_type") == "UNSET":
-                    _type_map = {
-                        "CSVFile": "DELIMITED",
-                        "Oracle": "ORACLE",
-                        "SqlServer": "SQLSERVER",
-                        "PostgreSQL": "POSTGRESQL",
-                        "Snowflake Data Cloud": "SNOWFLAKE",
-                        "Amazon S3 v2": "S3",
-                    }
-                    inp["data_source_type"] = _type_map.get(conn.get("instanceDisplayName", ""), "UNSET")
+            inp = dict(inp)
+            # Auto-inject orgId from session if not explicitly provided
+            if not inp.get("org_id") and c.session.org_uuid:
+                inp["org_id"] = c.session.org_uuid
+            # Try to resolve federatedId and auto-detect data_source_type from connection metadata
+            # The input connection_id may already be a federatedId — handle both cases
+            try:
+                conn = c.list_connections(connection_id=inp["connection_id"])
+                if isinstance(conn, dict) and "federatedId" in conn:
+                    inp["connection_id"] = conn["federatedId"]
+                    if not inp.get("data_source_type") or inp.get("data_source_type") == "UNSET":
+                        _type_map = {
+                            "CSVFile": "DELIMITED",
+                            "Oracle": "ORACLE",
+                            "SqlServer": "SQLSERVER",
+                            "PostgreSQL": "POSTGRESQL",
+                            "Snowflake Data Cloud": "SNOWFLAKE",
+                            "Amazon S3 v2": "S3",
+                        }
+                        inp["data_source_type"] = _type_map.get(conn.get("instanceDisplayName", ""), "UNSET")
+            except Exception:
+                pass  # connection_id is already a federatedId — use as-is
             payload = _build_create_profile_payload(inp)
             return c.create_profile(payload)
 

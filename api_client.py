@@ -261,15 +261,12 @@ class InformaticaAPIClient:
     # ------------------------------------------------------------------
 
     def list_projects(self, name: Optional[str] = None) -> list:
+        query = "type=='PROJECT'"
+        results = self.list_assets(query=query, limit=200, skip=0)
+        projects = results if isinstance(results, list) else results.get("objects", [])
         if name:
-            url = self._v3_url(f"public/core/v3/projects/name/{name}")
-        else:
-            url = self._v3_url("public/core/v3/projects")
-        resp = requests.get(url, headers=self._v3_headers())
-        data = self._check(resp)
-        if isinstance(data, list):
-            return data
-        return data.get("projects", data.get("value", [data] if data else []))
+            projects = [p for p in projects if p.get("path", "").lower() == name.lower()]
+        return projects
 
     def create_project(self, name: str, description: str = "") -> dict:
         url = self._v3_url("public/core/v3/projects")
