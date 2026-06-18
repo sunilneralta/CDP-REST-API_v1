@@ -240,10 +240,11 @@ TOOLS = [
             "properties": {
                 "name": {"type": "string", "description": "Profile name"},
                 "description": {"type": "string"},
-                "connection_id": {"type": "string", "description": "Source connection ID"},
+                "connection_id": {"type": "string", "description": "Source connection federatedId (not the DI connection ID). Use the federatedId field from idmc_list_connections."},
                 "frs_project_id": {"type": "string", "description": "Project ID to store profile in"},
                 "frs_folder_id": {"type": "string", "description": "Optional folder ID"},
                 "source_name": {"type": "string", "description": "Table or file to profile"},
+                "schema": {"type": "string", "description": "Schema/owner name for the source table (e.g. dbo, c04999184). Used as sourcePath in profiling properties."},
                 "fields": {
                     "type": "array",
                     "items": {
@@ -262,7 +263,7 @@ TOOLS = [
                 },
                 "data_source_type": {
                     "type": "string",
-                    "description": "e.g. ORACLE, DELIMITED, SQLSERVER, POSTGRESQL, SNOWFLAKE, S3, UNSET. Auto-detected from connection type if omitted.",
+                    "description": "e.g. SQL_SERVER (or SQLSERVER), ORACLE, DELIMITED, POSTGRESQL, SNOWFLAKE, S3, UNSET. SQLSERVER is auto-normalised to SQL_SERVER.",
                     "default": "UNSET",
                 },
                 "sampling_type": {
@@ -347,6 +348,16 @@ TOOLS = [
                         "required": ["name", "frsId"],
                     },
                 },
+                "org_id": {
+                    "type": "string",
+                    "description": "Organisation ID (orgId) to associate with the profile. If omitted, orgId is not sent in the payload.",
+                },
+                "profile_type": {
+                    "type": "string",
+                    "enum": ["COLUMN_PROFILE", "RULE_PROFILE"],
+                    "default": "COLUMN_PROFILE",
+                    "description": "Profile type. Default is COLUMN_PROFILE.",
+                },
                 "filter_enabled": {"type": "boolean", "default": False},
                 "filters": {
                     "type": "array",
@@ -406,7 +417,9 @@ TOOLS = [
         "name": "idmc_update_profile",
         "description": (
             "Update an existing profile definition. Specify only the fields you want to change; "
-            "all fields are optional except profile_id."
+            "all fields are optional except profile_id. Supports adding/removing rule specifications "
+            "via add_rule_specs/remove_rule_spec_frs_ids, and adding/removing profiled columns "
+            "via add_columns/remove_columns."
         ),
         "input_schema": {
             "type": "object",
@@ -446,6 +459,59 @@ TOOLS = [
                         },
                         "required": ["name", "dataType"],
                     },
+                },
+                "add_rule_specs": {
+                    "type": "array",
+                    "description": (
+                        "Rule specifications to add to the profile. Each entry needs the rule's frsId "
+                        "(from the asset catalog) and the input field mappings. "
+                        "Example: [{\"frsId\": \"49RzaoxlcaMguty2jPSvSM\", \"inputFields\": "
+                        "[{\"dataSourceFieldName\": \"SERIAL_NUM\", \"inFieldName\": \"NewInput1\"}], "
+                        "\"outputFields\": [{\"outFieldName\": \"NewOutput1\"}]}]"
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "frsId": {"type": "string", "description": "frsId of the rule specification asset"},
+                            "inputFields": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "dataSourceFieldName": {"type": "string", "description": "Column name in the source data"},
+                                        "inFieldName": {"type": "string", "description": "Input port name in the rule spec"},
+                                    },
+                                    "required": ["dataSourceFieldName", "inFieldName"],
+                                },
+                            },
+                            "outputFields": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "outFieldName": {"type": "string", "description": "Output port name in the rule spec"},
+                                    },
+                                    "required": ["outFieldName"],
+                                },
+                            },
+                        },
+                        "required": ["frsId"],
+                    },
+                },
+                "remove_rule_spec_frs_ids": {
+                    "type": "array",
+                    "description": "List of rule spec frsIds to remove from the profile's profileableFields",
+                    "items": {"type": "string"},
+                },
+                "add_columns": {
+                    "type": "array",
+                    "description": "Column (field) names to add to profileableFields as DATASOURCEFIELD entries",
+                    "items": {"type": "string"},
+                },
+                "remove_columns": {
+                    "type": "array",
+                    "description": "Column (field) names to remove from profileableFields (DATASOURCEFIELD entries only)",
+                    "items": {"type": "string"},
                 },
             },
             "required": ["profile_id"],

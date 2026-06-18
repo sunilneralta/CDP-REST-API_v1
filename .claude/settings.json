@@ -102,7 +102,11 @@
       "mcp__idmc-rest-api__idmc_list_columns",
       "mcp__idmc-rest-api__idmc_export_profile_results",
       "Bash(git rm *)",
-      "Bash(sed 's/.*\"name\":\\\\s*\"\\\\\\([^\"]*\\\\\\)\".*/\\\\1/')"
+      "Bash(sed 's/.*\"name\":\\\\s*\"\\\\\\([^\"]*\\\\\\)\".*/\\\\1/')",
+      "mcp__idmc-rest-api__idmc_get_profile",
+      "mcp__idmc-rest-api__idmc_update_profile",
+      "mcp__idmc-rest-api__idmc_get_rule_ids",
+      "mcp__idmc-rest-api__idmc_checkin_objects"
     ],
     "additionalDirectories": [
       "C:\\Users\\sunilkumar.cherukuri\\AppData\\Roaming\\Code\\User"

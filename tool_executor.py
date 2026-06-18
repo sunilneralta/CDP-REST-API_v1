@@ -37,12 +37,16 @@ def _build_create_profile_payload(inputs: dict) -> dict:
             "order": f.get("order", i),
             "isDeleted": False,
             "isMetadataUpdated": False,
+            "xpath": "/",
+            "columnGroup": 0,
+            "isLeafNode": True,
         })
         profileable_fields.append({
             "sourceName": inputs["source_name"],
             "fieldName": f["name"],
             "fieldType": "DATASOURCEFIELD",
             "isDeleted": False,
+            "xpath": "/",
         })
 
     filters_raw = inputs.get("filters", [])
@@ -61,42 +65,79 @@ def _build_create_profile_payload(inputs: dict) -> dict:
         })
 
     enable_claire = inputs.get("enable_claire", False)
+    data_source_type = inputs.get("data_source_type", "UNSET")
+    is_flatfile = data_source_type.upper() in ("FLATFILE", "FLAT_FILE", "DELIMITED")
+
+    adv_props_defaults = {
+        "maxTopN": None,
+        "maxPatterns": None,
+        "maxPatternThresholdPercent": None,
+        "maxRanks": None,
+        "inferDateTime": True,
+        "detectOutliers": True,
+        "maxColumnsPerMapping": None,
+        "minNoOfRowsForSplitMapping": None,
+        "maxMemory": None,
+        "maxPercentMemory": None,
+        "defaultBufferBlockSize": None,
+        "dtmBufferSize": None,
+        "lineSequentialBufferLength": None,
+        "stopOnErrors": None,
+        "tracingLevel": "NORMAL",
+    }
+    adv_props_defaults.update(inputs.get("profile_adv_props") or {})
+    adv_props_defaults["enableClaireAnomalyDetection"] = enable_claire
+
+    source_obj: dict = {
+        "name": inputs["source_name"],
+        "fields": source_fields,
+        "dataSourceType": data_source_type,
+        "sourceType": "DATASOURCE",
+        "properties": {
+            "dataSourceType": data_source_type,
+            "delimiter": ",",
+            "textQualifier": "\"",
+            "escapeCharacter": "",
+            "sourceFileName": inputs["source_name"],
+            "firstDataRow": 2,
+            "headerLineNo": 1,
+        } if is_flatfile else {"dataSourceType": data_source_type},
+        "advancedOptions": {
+            "DB REST API Retry Interval": "30",
+            "DB REST API Timeout": "600",
+            "Database Name": "",
+            "Job Status Poll Interval": "30",
+            "Job Timeout": "0",
+            "SQL Override": "",
+            "Source Type": "File",
+            "Staging Location": "",
+            "Table Name": "",
+        },
+    }
+
     payload: dict = {
         "name": inputs["name"],
         "description": inputs.get("description", ""),
         "connectionId": inputs["connection_id"],
         "isFilterEnabled": inputs.get("filter_enabled", False),
-        "source": {
-            "name": inputs["source_name"],
-            "fields": source_fields,
-            "dataSourceType": inputs.get("data_source_type", "UNSET"),
-            "sourceType": "DATASOURCE",
-            "properties": {
-                "dataSourceType": inputs.get("data_source_type", "UNSET"),
-                "delimiter": ",",
-                "textQualifier": "\"",
-                "escapeCharacter": "",
-                "sourceFileName": inputs["source_name"],
-                "firstDataRow": 2,
-                "headerLineNo": 1,
-            } if inputs.get("data_source_type", "").upper() in ("FLATFILE", "FLAT_FILE", "DELIMITED") else {},
-        },
+        "source": source_obj,
         "profileableFields": profileable_fields,
         "samplingOptions": {
             "samplingType": inputs.get("sampling_type", "ALL_ROWS"),
             "rows": inputs.get("sampling_rows", -1),
         },
         "drillDownType": "ON" if inputs.get("drill_down", True) else "OFF",
+        "profileType": inputs.get("profile_type", "COLUMN_PROFILE"),
         "runtimeOptions": {
             "scheduleId": inputs.get("schedule_id"),
             "runtimeEnvironmentId": inputs.get("runtime_environment_id"),
             "defaultEmailNotification": inputs.get("default_email_notification", True),
-            "profileAdvProps": {
-                "enableClaireAnomalyDetection": enable_claire,
-                **{k: v for k, v in (inputs.get("profile_adv_props") or {}).items()},
-            },
+            "profileAdvProps": adv_props_defaults,
         },
     }
+
+    if inputs.get("org_id"):
+        payload["orgId"] = inputs["org_id"]
 
     if inputs.get("frs_project_id"):
         payload["frsProjectId"] = inputs["frs_project_id"]

@@ -1,7 +1,7 @@
 # IDMC REST API MCP Server — Test Tracker
 
 **Pod:** EM | **Org:** 010WXI | **User:** sucherukuri@informatica.com  
-**Session Date:** 2026-06-16
+**Session Date:** 2026-06-16 | **Last Updated:** 2026-06-18 (Session 3)
 
 ---
 
@@ -113,9 +113,15 @@
 | Tool | Suggested Query | Notes |
 |------|----------------|-------|
 | `idmc_list_connections` | `{}` | ✅ Tested — fetched `cn_oracle_sucherukrib` by name |
+| `idmc_list_connections` | `{ "connection_name": "AK_ford_Sqlserver" }` | ✅ Tested 2026-06-18 — returned SqlServer2019 connection details |
+| `idmc_list_connectors` | `{ "limit": 200 }` | ✅ Tested 2026-06-18 — returned 187 connectors; note: native connectors (Oracle, SqlServer) not listed here |
 | `idmc_test_connection` | `{ "connection_id": "010WXI0B0000000000HF" }` | ✅ Tested — `cn_oracle_sucherukrib` passed |
+| `idmc_test_connection` | `{ "connection_id": "010WXI0B0000000000LX" }` | ✅ Tested 2026-06-18 — `cn_sqlserver_sucherukurib` passed |
 | `idmc_create_connection` | `{ "name": "cn_oracle_sucherukric", "type": "Oracle", ... }` | ✅ Tested — created Oracle connection ID `010WXI0B0000000000LT` |
-| `idmc_update_connection` | `{ ... }` | |
+| `idmc_create_connection` | `{ "name": "cn_sqlserver_sucherukurib", "type": "SqlServer2016", ... }` | ✅ Tested 2026-06-18 — created SqlServer2016 connection ID `010WXI0B0000000000LX` |
+| `idmc_update_connection` | `{ "connection_id": "010WXI0B0000000000LX", "payload": {...} }` | ✅ Tested 2026-06-18 — updated username/password/schema; requires `@type: "connection"` in payload (bug fixed in tool_executor.py) |
+| `idmc_get_connection_objects` | `{ "connection_id": "010WXI0B0000000000LX" }` | ✅ Tested 2026-06-18 — returned 10 tables after schema corrected to match username |
+| `idmc_get_object_fields` | `{ "connection_id": "...", "object_name": "<table>", "source_type": "sqlserver" }` | ✅ Tested 2026-06-18 — fetched fields for all 10 SQL Server tables in parallel |
 | `idmc_delete_connection` | `{ "connection_id": "<id>" }` | |
 | `idmc_migrate_connection` | `{ ... }` | |
 
@@ -135,7 +141,7 @@
 ### Runtime Environments & Agents
 | Tool | Suggested Query | Notes |
 |------|----------------|-------|
-| `idmc_get_runtime_environments` | `{}` | |
+| `idmc_get_runtime_environments` | `{ "env_name": "invpanaceamax01.informatica.com" }` | ✅ Tested 2026-06-18 — returned env ID `010WXI2500000000003M`, agent `010WXI0800000000001J` |
 | `idmc_get_secure_agents` | `{}` | ✅ Tested |
 | `idmc_get_secure_agents` | `{ "agent_name": "invpanaceamax01.informatica.com" }` | ✅ Tested — name lookup |
 | `idmc_get_secure_agents` | `{ "agent_id": "...", "include_service_details": true, "only_status": false }` | ✅ Tested — service status |
@@ -149,11 +155,11 @@
 ### Data Profiling
 | Tool | Suggested Query | Notes |
 |------|----------------|-------|
-| `idmc_list_profiles` | `{}` | |
-| `idmc_get_profile` | `{ "profile_id": "<id>" }` | |
-| `idmc_create_profile` | `{ ... }` | |
-| `idmc_update_profile` | `{ ... }` | |
-| `idmc_run_profile` | `{ "profile_id": "<id>" }` | |
+| `idmc_list_profiles` | `{}` | ✅ Tested 2026-06-18 — returned 1843 total profiles |
+| `idmc_get_profile` | `{ "profile_id": "<id>" }` | ✅ Tested 2026-06-18 — fetched full profile detail to inspect payload structure |
+| `idmc_create_profile` | `{ "name": "profile_mcp_CustomerProfiles", "connection_id": "786FaVFDd48d1DT6cOZBgI", ... }` | ✅ Tested 2026-06-18 — all 10 SQL Server profiles created successfully in SUCHERUKURI project. Root cause of prior 403: missing `orgId` (orgUuid) in POST body + try/except needed around DI connection lookup. |
+| `idmc_update_profile` | `{ "profile_id": "<id>", "add_rule_specs": [...] }` | ✅ Tested 2026-06-18 — added `rsp_mcp_validate_number` to 11 profiles; bug fixed: API requires `inputFieldMappings`/`outputFieldMappings` + `source.rules[]` in PUT body |
+| `idmc_run_profile` | `{ "profile_id": "<id>" }` | ✅ Tested 2026-06-18 — ran 11 profiles in parallel |
 | `idmc_delete_profile` | `{ "profile_id": "<id>" }` | |
 | `idmc_list_columns` | `{ "profile_id": "<id>" }` | |
 | `idmc_get_column` | `{ ... }` | |
@@ -270,7 +276,7 @@
 | `idmc_delete_object_permission` | `{ ... }` | |
 | `idmc_check_object_access` | `{ "object_id": "<id>" }` | |
 | `idmc_list_assets` | `{}` | |
-| `idmc_list_project_assets` | `{ "project_name": "SUCHERUKURI" }` | ✅ Tested — returned 116 assets across 10 folders (DMAPPLET, RULE_SPECIFICATION, PROFILE, DICTIONARY, APIM_API, etc.) |
+| `idmc_list_project_assets` | `{ "project_name": "SUCHERUKURI" }` | ✅ Tested — returned 129 assets (DMAPPLET, RULE_SPECIFICATION, PROFILE, DICTIONARY, APIM_API, etc.) |
 | `idmc_assign_tags` | `{ ... }` | |
 | `idmc_remove_asset_tags` | `{ ... }` | |
 | `idmc_lookup_object` | `{ ... }` | |
@@ -289,6 +295,40 @@
 | `idmc_add_saml_role_mappings` | `{ ... }` | |
 | `idmc_remove_saml_group_mappings` | `{ ... }` | |
 | `idmc_remove_saml_role_mappings` | `{ ... }` | |
+
+---
+
+## Session 2026-06-18 — New Tests Summary
+
+| # | Tool | Status | Notes |
+|---|------|--------|-------|
+| 12 | `idmc_login` | ✅ | Re-login to EM pod; session expired mid-session and re-logged in |
+| 13 | `idmc_list_connectors` | ✅ | 187 connectors; native SqlServer not listed (expected) |
+| 14 | `idmc_list_connections` (by name) | ✅ | Fetched `AK_ford_Sqlserver` — SqlServer2019 type |
+| 15 | `idmc_get_runtime_environments` (by name) | ✅ | Resolved `invpanaceamax01.informatica.com` → IDs |
+| 16 | `idmc_create_connection` (SqlServer) | ✅ | Created `cn_sqlserver_sucherukurib` (SqlServer2016, ID `010WXI0B0000000000LX`) |
+| 17 | `idmc_update_connection` | ✅ | Updated username/password/schema/instanceName; discovered `@type` bug |
+| 18 | `idmc_test_connection` | ✅ | Connection test passed |
+| 19 | `idmc_get_connection_objects` | ✅ | Listed 10 tables after schema fixed to match username |
+| 20 | `idmc_get_object_fields` × 10 | ✅ | Fetched all fields from 10 SQL Server tables in parallel |
+| 21 | `idmc_list_profiles` | ✅ | 1843 profiles in org |
+| 22 | `idmc_get_profile` | ✅ | Fetched full profile payload to debug create_profile |
+| 23 | `idmc_create_profile` | ✅ | 10 profiles created — profile_mcp_CustomerProfiles through profile_mcp_VendorInvoices |
+
+---
+
+## Session 2026-06-18 (Session 3) — New Tests Summary
+
+| # | Tool | Status | Notes |
+|---|------|--------|-------|
+| 24 | `idmc_login` | ✅ | Re-login to EM pod (session 3) |
+| 25 | `idmc_list_project_assets` | ✅ | 129 assets in SUCHERUKURI — 20 profiles, 44 DMAPPLETs, 26 rule specs, 7 APIs, 6 dicts, 6 mappings |
+| 26 | `idmc_lookup_object` | ✅ | Looked up `rsp_mcp_validate_number` (RULE_SPECIFICATION) → frsId `jo2RF1YPTcBjci8XN23rKb` |
+| 27 | `idmc_list_profiles` (by name) | ✅ | Used `exact_match=true` to fetch profile UUIDs for all 11 `profile_mcp_*` profiles |
+| 28 | `idmc_get_profile` | ✅ | Verified profile definition after update — confirmed `source.rules[]` and `MAPPLETFIELD` in `profileableFields` |
+| 29 | `idmc_update_profile` (add_rule_specs) | ✅ | Added `rsp_mcp_validate_number` to all 11 profiles in SUCHERUKURI; bug fixed in tool_executor.py (see Code Fixes below) |
+| 30 | `idmc_run_profile` × 11 | ✅ | Ran all 11 profiles in parallel; all launched successfully |
+| 31 | `idmc_get_run_detail` | ✅ | Checked run status — profile_mcp_CustomerProfiles COMPLETED, 20 rows, 5 columns, 71.5s |
 
 ---
 
@@ -318,3 +358,9 @@
 | Object Permissions | `idmc_create_object_permission` used opaque `payload` blob — replaced with explicit `principal_type`, `principal_name`, `read`, `update`, `delete`, `execute`, `change_permission` fields | tools.py, api_client.py, tool_executor.py |
 | Object Permissions | `idmc_update_object_permission` same opaque payload + wrong param name `permission_id` → `acl_id` | tools.py, api_client.py, tool_executor.py |
 | Object Permissions | **Critical** — `idmc_delete_object_permission` sent ACL ID in request body; doc requires it in URL path (`/permissions/<acl_id>`) | tools.py, api_client.py, tool_executor.py |
+| Connections | `idmc_update_connection` — API requires `@type: "connection"` in payload body; partial mode was silently failing without it | tool_executor.py |
+| Profiles | `idmc_create_profile` — `null` `scheduleId` serialized into JSON causing PROFILE_SVC_00048 error; fix: only include `scheduleId`/`runtimeEnvironmentId` when non-null | tool_executor.py |
+| Profiles | `idmc_create_profile` — 403 APP_13407 because DI `list_connections` lookup threw when passed a federatedId; fix: wrapped lookup in try/except | tool_executor.py |
+| Profiles | `idmc_create_profile` — 403 APP_13407 root cause: `orgId` (orgUuid from login) missing from POST body; profiling service requires it; fix: capture `orgUuid` in session at login and inject into payload | api_client.py, tool_executor.py |
+| Profiles | `idmc_create_profile` payload enriched: added `profileType`, `tracingLevel`, `xpath`/`columnGroup`/`isLeafNode` in fields, `samplingOptions.id`, `advancedOptions` per reference shell script | tool_executor.py |
+| Profiles | `idmc_update_profile` (add_rule_specs) — **Critical** — MAPPLETFIELD used wrong keys `inputFields`/`outputFields`; HAR analysis revealed correct keys are `inputFieldMappings`/`outputFieldMappings`; also `source.rules[]` was being stripped but is required by the API; added `assignmentIdentifier` (md5 of frsId) and `appliedBy: USER` | tool_executor.py |

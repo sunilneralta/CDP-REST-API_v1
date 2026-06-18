@@ -15,6 +15,8 @@ class Session:
     base_url: str = ""          # e.g. usw3-dqprofile.dm-us.informaticacloud.com
     frs_base_url: str = ""      # e.g. usw3.dm-us.informaticacloud.com  (no -dqprofile)
     pod_region: str = "us"
+    org_id: str = ""            # orgId e.g. 010WXI
+    org_uuid: str = ""          # orgUuid e.g. azLMvNUOHCijD6tzD3fZE5
 
     @property
     def authenticated(self) -> bool:
@@ -117,6 +119,8 @@ class InformaticaAPIClient:
 
         self.session.session_id = data["icSessionId"]
         self.session.pod_region = pod_region
+        self.session.org_id = data.get("orgId", "")
+        self.session.org_uuid = data.get("orgUuid", "")
 
         # serverUrl example: https://usw3.dm-us.informaticacloud.com/saas
         server_url: str = data["serverUrl"]
@@ -166,6 +170,7 @@ class InformaticaAPIClient:
             "status": "logged_in",
             "user": data.get("name"),
             "org": data.get("orgId"),
+            "orgUuid": data.get("orgUuid"),
             "base_url": self.session.base_url,
             "session_id": self.session.session_id,
             "v3_session_id": v3_session_id if v3_session_id else "not_available",
