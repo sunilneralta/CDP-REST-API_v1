@@ -473,6 +473,7 @@ TOOLS = [
                         "type": "object",
                         "properties": {
                             "frsId": {"type": "string", "description": "frsId of the rule specification asset"},
+                            "name": {"type": "string", "description": "Rule name (as returned by get_rule_spec_ports). Required for the API to persist the rule correctly."},
                             "inputFields": {
                                 "type": "array",
                                 "items": {
@@ -557,6 +558,29 @@ TOOLS = [
             "read_only": True,
             "destructive": False,
             "idempotent": False,
+        },
+    },
+    {
+        "name": "idmc_get_rule_spec_ports",
+        "description": (
+            "Fetch the input and output port definitions of a Rule Specification asset by its frsId. "
+            "Use this before calling update_profile with add_rule_specs to discover the available port "
+            "names so the user can decide which source column to map to which input port."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "frs_id": {
+                    "type": "string",
+                    "description": "frsId of the Rule Specification asset (from list_assets type=='RULE_SPECIFICATION')",
+                },
+            },
+            "required": ["frs_id"],
+        },
+        "annotations": {
+            "read_only": True,
+            "destructive": False,
+            "idempotent": True,
         },
     },
     {

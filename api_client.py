@@ -346,7 +346,7 @@ class InformaticaAPIClient:
         return self._check(resp)
 
     def update_profile(self, profile_id: str, payload: dict) -> dict:
-        url = self._profiling_url(f"profiling-service/api/v1/profile/{profile_id}")
+        url = self._profiling_url(f"profiling-service/api/v1/profile/update/{profile_id}")
         resp = requests.put(url, headers=self._headers(), json=payload)
         return self._check(resp)
 
@@ -383,6 +383,30 @@ class InformaticaAPIClient:
         url = self._profiling_url("profiling-service/api/v1/profile/getRuleIds")
         resp = requests.post(url, headers=self._headers(), json=payload)
         return self._check(resp)
+
+    def get_rule_spec_ports(self, frs_id: str) -> dict:
+        frs_base = self.session.frs_base_url or self.session.base_url
+        url = f"https://{frs_base}/frs/v1/Documents('{frs_id}')?$expand=nativeData"
+        resp = requests.get(url, headers=self._headers())
+        data = self._check(resp)
+        blob = data.get("nativeData", {}).get("documentBlob", "{}")
+        import json as _json
+        parsed = _json.loads(blob)
+        name = data.get("name", "")
+        return {
+            "frsId": frs_id,
+            "name": name,
+            "inputFields": [
+                {"name": f["name"], "dataType": f.get("type", "string"),
+                 "precision": f.get("precision", 50), "scale": f.get("scale", 0)}
+                for f in parsed.get("inputFields", [])
+            ],
+            "outputFields": [
+                {"name": f["name"], "dataType": f.get("type", "string"),
+                 "precision": int(f.get("precision", 100)), "scale": f.get("scale", 0)}
+                for f in parsed.get("outputFields", [])
+            ],
+        }
 
     # ------------------------------------------------------------------
     # Jobs

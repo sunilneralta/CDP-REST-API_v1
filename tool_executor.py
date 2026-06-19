@@ -4,6 +4,7 @@ Maps tool names + inputs to API client calls.
 """
 
 import base64
+import hashlib
 import json
 import os
 from typing import Any
@@ -88,12 +89,10 @@ def _build_create_profile_payload(inputs: dict) -> dict:
     adv_props_defaults.update(inputs.get("profile_adv_props") or {})
     adv_props_defaults["enableClaireAnomalyDetection"] = enable_claire
 
-    source_obj: dict = {
-        "name": inputs["source_name"],
-        "fields": source_fields,
-        "dataSourceType": data_source_type,
-        "sourceType": "DATASOURCE",
-        "properties": {
+    schema = inputs.get("schema", "")
+
+    if is_flatfile:
+        source_properties = {
             "dataSourceType": data_source_type,
             "delimiter": ",",
             "textQualifier": "\"",
@@ -101,18 +100,18 @@ def _build_create_profile_payload(inputs: dict) -> dict:
             "sourceFileName": inputs["source_name"],
             "firstDataRow": 2,
             "headerLineNo": 1,
-        } if is_flatfile else {"dataSourceType": data_source_type},
-        "advancedOptions": {
-            "DB REST API Retry Interval": "30",
-            "DB REST API Timeout": "600",
-            "Database Name": "",
-            "Job Status Poll Interval": "30",
-            "Job Timeout": "0",
-            "SQL Override": "",
-            "Source Type": "File",
-            "Staging Location": "",
-            "Table Name": "",
-        },
+        }
+    else:
+        source_properties = {"dataSourceType": data_source_type}
+        if schema:
+            source_properties["sourcePath"] = schema
+
+    source_obj: dict = {
+        "name": inputs["source_name"],
+        "fields": source_fields,
+        "dataSourceType": data_source_type,
+        "sourceType": "DATASOURCE",
+        "properties": source_properties,
     }
 
     payload: dict = {
@@ -344,7 +343,11 @@ class ToolExecutor:
             return c.delete_profile(inp["profile_id"])
 
         if tool_name == "idmc_update_profile":
-            payload: dict = {}
+            # Full PUT — fetch existing profile and merge changes
+            existing = c.get_profile(inp["profile_id"])
+            payload: dict = {k: existing[k] for k in existing if k != "profileType"}
+            payload["profileType"] = existing.get("profileType", "COLUMN_PROFILE")
+
             for field, api_key in [
                 ("name", "name"), ("description", "description"),
                 ("filter_enabled", "isFilterEnabled"), ("drill_down", "drillDownType"),
@@ -372,12 +375,88 @@ class ToolExecutor:
                     for f in inp["filters"]
                 ]
             if inp.get("fields"):
-                payload["source"] = {"fields": [
+                payload["source"]["fields"] = [
                     {"name": fld["name"], "dataType": fld.get("dataType", "varchar"),
                      "precision": fld.get("precision", 255), "scale": fld.get("scale", 0),
                      "pcType": fld.get("pcType", "STRING")}
                     for fld in inp["fields"]
-                ]}
+                ]
+            # Remove rule specs by frsId (from both source.rules and profileableFields)
+            if inp.get("remove_rule_spec_frs_ids"):
+                remove_set = set(inp["remove_rule_spec_frs_ids"])
+                payload["source"]["rules"] = [
+                    r for r in payload["source"].get("rules", [])
+                    if r.get("frsId") not in remove_set
+                ]
+                payload["profileableFields"] = [
+                    f for f in payload["profileableFields"]
+                    if f.get("frsId") not in remove_set
+                ]
+            # Remove plain datasource columns
+            if inp.get("remove_columns"):
+                remove_cols = set(inp["remove_columns"])
+                payload["profileableFields"] = [
+                    f for f in payload["profileableFields"]
+                    if not (f.get("fieldType") == "DATASOURCEFIELD" and f.get("fieldName") in remove_cols)
+                ]
+            # Add plain datasource columns
+            if inp.get("add_columns"):
+                existing_col_names = {f.get("fieldName") for f in payload["profileableFields"]}
+                source_fields = {sf["name"]: sf for sf in payload["source"].get("fields", [])}
+                for col_name in inp["add_columns"]:
+                    if col_name not in existing_col_names:
+                        sf = source_fields.get(col_name, {})
+                        payload["profileableFields"].append({
+                            "fieldName": col_name,
+                            "sourceName": payload["source"].get("name", ""),
+                            "precision": sf.get("precision", 255),
+                            "scale": sf.get("scale", 0),
+                            "fieldType": "DATASOURCEFIELD",
+                            "isDeleted": False,
+                        })
+            # Add rule specifications — updates both source.rules and profileableFields (MAPPLETFIELD)
+            if inp.get("add_rule_specs"):
+                existing_rule_frs_ids = {r.get("frsId") for r in payload["source"].get("rules", [])}
+                payload["source"].setdefault("rules", [])
+                for rspec in inp["add_rule_specs"]:
+                    frs_id = rspec["frsId"]
+                    in_fields = rspec.get("inputFields", [])
+                    out_fields = rspec.get("outputFields", [])
+                    # Add to source.rules if not already present
+                    if frs_id not in existing_rule_frs_ids:
+                        rule_name = rspec.get("name") or frs_id
+                        payload["source"]["rules"].append({
+                            "frsId": frs_id,
+                            "ruleType": "RULE_SPECIFICATION",
+                            "name": rule_name,
+                            "description": rspec.get("description", None),
+                            "isDeleted": False,
+                            "inFields": [{"name": f["inFieldName"], "dataType": "string",
+                                          "precision": 50, "scale": 0, "isDeleted": False}
+                                         for f in in_fields],
+                            "outFields": [{"name": f["outFieldName"], "dataType": "string",
+                                           "precision": 100, "scale": 0, "isDeleted": False}
+                                          for f in out_fields],
+                        })
+                    # Add MAPPLETFIELD to profileableFields
+                    import hashlib as _hl
+                    _id_src = frs_id + "".join(f["inFieldName"] for f in in_fields)
+                    assignment_id = _hl.md5(_id_src.encode()).hexdigest()
+                    payload["profileableFields"].append({
+                        "frsId": frs_id,
+                        "assignmentIdentifier": assignment_id,
+                        "fieldType": "MAPPLETFIELD",
+                        "ruleType": "RULE_SPECIFICATION",
+                        "isDeleted": False,
+                        "appliedBy": "USER",
+                        "inputFieldMappings": [{"inFieldName": f["inFieldName"],
+                                                "dataSourceFieldName": f["dataSourceFieldName"],
+                                                "isDeleted": False}
+                                               for f in in_fields],
+                        "outputFieldMappings": [{"outFieldName": f["outFieldName"],
+                                                 "isDeleted": False}
+                                                for f in out_fields],
+                    })
             return c.update_profile(inp["profile_id"], payload)
 
         if tool_name == "idmc_suggest_profile_name":
@@ -395,6 +474,9 @@ class ToolExecutor:
                 if inp.get(key):
                     payload[api_key] = inp[key]
             return c.get_last_successful_run_key(payload)
+
+        if tool_name == "idmc_get_rule_spec_ports":
+            return c.get_rule_spec_ports(inp["frs_id"])
 
         if tool_name == "idmc_get_rule_ids":
             payload = {}

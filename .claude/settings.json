@@ -106,7 +106,17 @@
       "mcp__idmc-rest-api__idmc_get_profile",
       "mcp__idmc-rest-api__idmc_update_profile",
       "mcp__idmc-rest-api__idmc_get_rule_ids",
-      "mcp__idmc-rest-api__idmc_checkin_objects"
+      "mcp__idmc-rest-api__idmc_checkin_objects",
+      "Bash(curl -s -X GET \"https://emw1.dm-em.informaticacloud.com/frs/v1/Documents\\('jo2RF1YPTcBjci8XN23rKb'\\)\" -H \"IDS-SESSION-ID: 1hXL6WFmMs6fdX1DpO9zQF\")",
+      "Bash(curl -s -H 'icSessionId: 4j6WbNhUQSQlHN7VRdBKWE' 'https://dm-em.informaticacloud.com/frs/v1/Documents\\('\\\\''jo2RF1YPTcBjci8XN23rKb'\\\\''\\)?$expand=nativeData')",
+      "Bash(curl -s 'https://emw1.dm-em.informaticacloud.com/frs/v1/Documents\\('\\\\''jo2RF1YPTcBjci8XN23rKb'\\\\''\\)?$expand=nativeData' -H 'IDS-SESSION-ID: keqxxsz5IUQgbmBpw7L3qD' -H 'Accept: application/json')",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s 'https://emw1.dm-em.informaticacloud.com/frs/v1/Documents\\('\\\\''jo2RF1YPTcBjci8XN23rKb'\\\\''\\)?$expand=nativeData' -H 'IDS-SESSION-ID: keqxxsz5IUQgbmBpw7L3qD')",
+      "mcp__idmc-rest-api__idmc_get_rule_spec_ports",
+      "mcp__idmc-rest-api__idmc_get_privileges",
+      "Bash(tasklist)",
+      "Bash(wmic process *)",
+      "mcp__idmc-rest-api__idmc_get_column"
     ],
     "additionalDirectories": [
       "C:\\Users\\sunilkumar.cherukuri\\AppData\\Roaming\\Code\\User"
