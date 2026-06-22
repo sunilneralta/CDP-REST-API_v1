@@ -69,25 +69,12 @@ def _build_create_profile_payload(inputs: dict) -> dict:
     data_source_type = inputs.get("data_source_type", "UNSET")
     is_flatfile = data_source_type.upper() in ("FLATFILE", "FLAT_FILE", "DELIMITED")
 
-    adv_props_defaults = {
-        "maxTopN": None,
-        "maxPatterns": None,
-        "maxPatternThresholdPercent": None,
-        "maxRanks": None,
-        "inferDateTime": True,
-        "detectOutliers": True,
-        "maxColumnsPerMapping": None,
-        "minNoOfRowsForSplitMapping": None,
-        "maxMemory": None,
-        "maxPercentMemory": None,
-        "defaultBufferBlockSize": None,
-        "dtmBufferSize": None,
-        "lineSequentialBufferLength": None,
-        "stopOnErrors": None,
-        "tracingLevel": "NORMAL",
-    }
-    adv_props_defaults.update(inputs.get("profile_adv_props") or {})
-    adv_props_defaults["enableClaireAnomalyDetection"] = enable_claire
+    user_adv_props = inputs.get("profile_adv_props") or {}
+    if user_adv_props or enable_claire:
+        adv_props = dict(user_adv_props)
+        adv_props["enableClaireAnomalyDetection"] = enable_claire
+    else:
+        adv_props = None
 
     schema = inputs.get("schema", "")
 
@@ -131,7 +118,7 @@ def _build_create_profile_payload(inputs: dict) -> dict:
             "scheduleId": inputs.get("schedule_id"),
             "runtimeEnvironmentId": inputs.get("runtime_environment_id"),
             "defaultEmailNotification": inputs.get("default_email_notification", True),
-            "profileAdvProps": adv_props_defaults,
+            **({"profileAdvProps": adv_props} if adv_props is not None else {}),
         },
     }
 

@@ -116,7 +116,8 @@
       "mcp__idmc-rest-api__idmc_get_privileges",
       "Bash(tasklist)",
       "Bash(wmic process *)",
-      "mcp__idmc-rest-api__idmc_get_column"
+      "mcp__idmc-rest-api__idmc_get_column",
+      "Bash(python3 -c \"import pdfminer; print\\('pdfminer ok'\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\sunilkumar.cherukuri\\AppData\\Roaming\\Code\\User"

@@ -288,7 +288,7 @@ TOOLS = [
                 },
                 "runtime_environment_id": {
                     "type": "string",
-                    "description": "Runtime environment (Secure Agent group) ID to run the profile on.",
+                    "description": "Do NOT pass this for create_profile — the profiling service resolves the runtime environment automatically from the connection. Passing a v2-format ID causes FRS_143 DocRef validation error.",
                 },
                 "schedule_id": {
                     "type": "string",
@@ -350,7 +350,7 @@ TOOLS = [
                 },
                 "org_id": {
                     "type": "string",
-                    "description": "Organisation ID (orgId) to associate with the profile. If omitted, orgId is not sent in the payload.",
+                    "description": "Organisation UUID (orgId) to associate with the profile. Auto-injected from session (orgUuid) if omitted — no need to pass explicitly.",
                 },
                 "profile_type": {
                     "type": "string",

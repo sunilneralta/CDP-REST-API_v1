@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDMC MCP Server — Documentation</title>
+<style>
+  :root {
+    --primary: #FF6D00;
+    --primary-dark: #E65100;
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --text: #e2e8f0;
+    --text-muted: #8892aa;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --blue: #3b82f6;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  /* NAV */
+  nav { position: sticky; top: 0; z-index: 100; background: rgba(15,17,23,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; gap: 2rem; height: 60px; }
+  .nav-brand { font-size: 1.1rem; font-weight: 700; color: var(--primary); white-space: nowrap; }
+  .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+  .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-badge { margin-left: auto; background: var(--primary); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 20px; }
+
+  /* HERO */
+  .hero { padding: 5rem 2rem 4rem; text-align: center; background: radial-gradient(ellipse at 50% 0%, rgba(255,109,0,0.12) 0%, transparent 70%); }
+  .hero-badge { display: inline-block; background: rgba(255,109,0,0.15); color: var(--primary); border: 1px solid rgba(255,109,0,0.3); border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; font-weight: 600; letter-spacing: .05em; margin-bottom: 1.5rem; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+  .hero h1 span { color: var(--primary); }
+  .hero p { font-size: 1.15rem; color: var(--text-muted); max-width: 640px; margin: 0 auto 2.5rem; }
+  .hero-clients { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 3rem; }
+  .client-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 16px; font-size: 0.85rem; color: var(--text-muted); }
+  .hero-stats { display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
+  .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+
+  /* SECTIONS */
+  section { padding: 4rem 2rem; max-width: 1200px; margin: 0 auto; }
+  .section-title { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .section-sub { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.95rem; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+  /* FLOW DIAGRAM */
+  .flow { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0; margin: 2rem 0; }
+  .flow-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.5rem; text-align: center; min-width: 140px; }
+  .flow-box .icon { font-size: 1.8rem; margin-bottom: 6px; }
+  .flow-box .label { font-size: 0.85rem; font-weight: 600; }
+  .flow-box .sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+  .flow-arrow { color: var(--primary); font-size: 1.4rem; padding: 0 0.5rem; }
+
+  /* ARCH CARDS */
+  .arch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .arch-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+  .arch-card .file { font-family: monospace; font-size: 0.9rem; color: var(--primary); font-weight: 700; margin-bottom: 0.5rem; }
+  .arch-card p { font-size: 0.85rem; color: var(--text-muted); }
+
+  /* SETUP STEPS */
+  .steps { display: flex; flex-direction: column; gap: 1rem; }
+  .step { display: flex; gap: 1.2rem; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.5rem; }
+  .step-num { background: var(--primary); color: #fff; font-weight: 800; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; margin-top: 2px; }
+  .step-content h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+  .step-content p { font-size: 0.85rem; color: var(--text-muted); }
+  code { font-family: 'Fira Code', 'Cascadia Code', monospace; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 0.82rem; color: var(--cyan); }
+  pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; overflow-x: auto; font-family: 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.7; margin: 0.8rem 0; }
+  .kw { color: #f97316; }
+  .str { color: #86efac; }
+  .cmt { color: #6b7280; font-style: italic; }
+  .key { color: #93c5fd; }
+
+  /* CLIENT CONFIGS */
+  .config-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .config-tab { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; cursor: pointer; color: var(--text-muted); transition: all .2s; }
+  .config-tab.active, .config-tab:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .config-panel { display: none; }
+  .config-panel.active { display: block; }
+
+  /* EXAMPLES */
+  .examples-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.2rem; }
+  .example-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .example-header { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.7rem; }
+  .example-icon { font-size: 1.2rem; }
+  .example-title { font-weight: 700; font-size: 0.9rem; }
+  .example-tag { margin-left: auto; font-size: 0.7rem; background: rgba(255,109,0,0.15); color: var(--primary); border-radius: 5px; padding: 2px 8px; font-weight: 600; }
+  .example-body { padding: 1rem 1.2rem; }
+  .prompt-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.82rem; color: #c4b5fd; font-style: italic; margin-bottom: 0.8rem; }
+  .prompt-box::before { content: '💬 '; }
+  .example-body pre { margin: 0; font-size: 0.75rem; }
+
+  /* TOOLS TABLE */
+  .tools-controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+  .search-box { flex: 1; min-width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 0.9rem; outline: none; }
+  .search-box:focus { border-color: var(--primary); }
+  .filter-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .filter-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer; color: var(--text-muted); transition: all .2s; }
+  .filter-btn:hover, .filter-btn.active { background: var(--surface2); border-color: var(--primary); color: var(--text); }
+  .tool-count { font-size: 0.82rem; color: var(--text-muted); margin-left: auto; }
+
+  .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.7rem; }
+  .tool-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; cursor: pointer; transition: border-color .2s, transform .15s; }
+  .tool-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .tool-card.hidden { display: none; }
+  .tool-name { font-family: monospace; font-size: 0.82rem; color: var(--primary); font-weight: 700; margin-bottom: 4px; }
+  .tool-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tool-badges { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+  .badge { font-size: 0.65rem; padding: 1px 7px; border-radius: 4px; font-weight: 600; }
+  .badge-read { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .badge-write { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .badge-destructive { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-cat { background: rgba(168,85,247,0.15); color: var(--purple); }
+
+  /* API VERSIONS */
+  .api-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  .api-table th { text-align: left; padding: 10px 14px; background: var(--surface2); color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+  .api-table td { padding: 10px 14px; border-bottom: 1px solid rgba(46,51,80,0.5); }
+  .api-table tr:last-child td { border: none; }
+  .v-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 1px 8px; border-radius: 4px; }
+  .v1 { background: rgba(34,197,94,0.15); color: var(--green); }
+  .v2 { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .v3 { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .vfrs { background: rgba(6,182,212,0.15); color: var(--cyan); }
+
+  /* REGION TABLE */
+  .region-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.8rem; margin-bottom: 2rem; }
+  .region-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.2rem; }
+  .region-code { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
+  .region-name { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px; }
+  .region-url { font-family: monospace; font-size: 0.72rem; color: var(--cyan); }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; font-size: 0.82rem; color: var(--text-muted); }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    .flow { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+    .hero-stats { gap: 1.5rem; }
+    nav { padding: 0 1rem; gap: 1rem; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">⚡ IDMC MCP</div>
+  <ul class="nav-links">
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="#examples">Examples</a></li>
+    <li><a href="#tools">Tools</a></li>
+    <li><a href="#api-versions">API Reference</a></li>
+  </ul>
+  <span class="nav-badge">151+ Tools</span>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Open Standard · MCP Protocol</div>
+  <h1>Informatica IDMC<br><span>via Natural Language</span></h1>
+  <p>An MCP server that exposes 151+ Informatica Intelligent Data Management Cloud REST API operations as callable tools — works with any MCP-compatible AI assistant.</p>
+  <div class="hero-clients">
+    <span class="client-chip">Claude Code</span>
+    <span class="client-chip">GitHub Copilot</span>
+    <span class="client-chip">Cursor</span>
+    <span class="client-chip">Windsurf</span>
+    <span class="client-chip">Continue.dev</span>
+    <span class="client-chip">Any MCP Client</span>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">151+</div><div class="stat-label">Tools Available</div></div>
+    <div class="stat"><div class="stat-num">4</div><div class="stat-label">API Versions</div></div>
+    <div class="stat"><div class="stat-num">4</div><div class="stat-label">Pod Regions</div></div>
+    <div class="stat"><div class="stat-num">1</div><div class="stat-label">Config Line</div></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-title">How It Works</div>
+  <div class="section-sub">The full request flow from your natural language prompt to Informatica Cloud and back.</div>
+
+  <div class="flow">
+    <div class="flow-box">
+      <div class="icon">💬</div>
+      <div class="label">You</div>
+      <div class="sub">Natural language</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="icon">🤖</div>
+      <div class="label">AI Assistant</div>
+      <div class="sub">Claude / Copilot / Cursor</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="icon">🔌</div>
+      <div class="label">MCP Protocol</div>
+      <div class="sub">stdio · JSON-RPC</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="icon">⚙️</div>
+      <div class="label">server.py</div>
+      <div class="sub">Entry point</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="icon">🗂️</div>
+      <div class="label">tool_executor.py</div>
+      <div class="sub">Dispatcher</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="icon">🌐</div>
+      <div class="label">api_client.py</div>
+      <div class="sub">HTTP · REST</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="icon">☁️</div>
+      <div class="label">IDMC Cloud</div>
+      <div class="sub">REST APIs</div>
+    </div>
+  </div>
+
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="file">tools.py</div>
+      <p>Single source of truth — JSON schema definitions for all 151+ tools (name, description, input parameters, annotations). The AI reads these at startup to know what it can do.</p>
+    </div>
+    <div class="arch-card">
+      <div class="file">server.py</div>
+      <p>MCP protocol entry point. Handles <code>tools/list</code> and <code>tools/call</code> requests. Runs executor in a thread pool. Redacts passwords from logs.</p>
+    </div>
+    <div class="arch-card">
+      <div class="file">tool_executor.py</div>
+      <p>Central dispatcher. Maps every tool name to the right <code>api_client</code> method. Builds complex nested payloads (e.g. create_profile) from flat AI inputs.</p>
+    </div>
+    <div class="arch-card">
+      <div class="file">api_client.py</div>
+      <p>HTTP layer. Manages session state. Uses different auth headers per API version: <code>IDS-SESSION-ID</code>, <code>icSessionId</code>, <code>INFA-SESSION-ID</code>. Routes to regional pods.</p>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:2rem">Why It's Client-Agnostic</div>
+  <div class="section-sub">The server speaks the open MCP standard — it has zero knowledge of which AI is calling it.</div>
+  <pre><span class="cmt">// The MCP protocol has just two operations:</span>
+
+<span class="cmt">// 1. AI asks: "what can you do?"</span>
+<span class="key">client</span> → <span class="str">"tools/list"</span>              <span class="cmt">// request</span>
+<span class="key">server</span> → <span class="str">[{ name, description, inputSchema }, ...]</span>  <span class="cmt">// 151+ tools</span>
+
+<span class="cmt">// 2. AI asks: "do this specific thing"</span>
+<span class="key">client</span> → <span class="str">"tools/call"</span> <span class="kw">{ name: </span><span class="str">"idmc_list_connections"</span><span class="kw">, arguments: {} }</span>
+<span class="key">server</span> → <span class="str">{ "content": [{ "type": "text", "text": "..." }] }</span></pre>
+</section>
+
+<hr class="divider">
+
+<!-- SETUP -->
+<section id="setup">
+  <div class="section-title">Setup & Registration</div>
+  <div class="section-sub">One-time setup — then register in your AI assistant's config file.</div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>Install dependencies</h4>
+        <p>From the project directory, install the required Python packages.</p>
+        <pre>pip install -r requirements.txt</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>Configure credentials</h4>
+        <p>Run the setup script — it opens a native OS dialog for your IDMC username and password. Credentials are saved to <code>.mcp.json</code>.</p>
+        <pre>python setup_credentials.py</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>Register with your AI assistant</h4>
+        <p>Add the server config to your AI tool's config file. The path and filename differ per client — see tabs below.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:2rem">
+    <div class="config-tabs">
+      <div class="config-tab active" onclick="showConfig('claude')">Claude Code</div>
+      <div class="config-tab" onclick="showConfig('cursor')">Cursor</div>
+      <div class="config-tab" onclick="showConfig('vscode')">VS Code Copilot</div>
+      <div class="config-tab" onclick="showConfig('windsurf')">Windsurf</div>
+    </div>
+
+    <div id="cfg-claude" class="config-panel active">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.6rem">File: <code>.mcp.json</code> in the project root (auto-detected by Claude Code)</p>
+      <pre>{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"idmc-rest-api"</span>: {
+      <span class="key">"command"</span>: <span class="str">"python"</span>,
+      <span class="key">"args"</span>: [<span class="str">"C:/Softwares/idmc-rest-api_endusers/server.py"</span>]
+    }
+  }
+}</pre>
+    </div>
+
+    <div id="cfg-cursor" class="config-panel">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.6rem">File: <code>.cursor/mcp.json</code> in your project root</p>
+      <pre>{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"idmc-rest-api"</span>: {
+      <span class="key">"command"</span>: <span class="str">"python"</span>,
+      <span class="key">"args"</span>: [<span class="str">"C:/Softwares/idmc-rest-api_endusers/server.py"</span>]
+    }
+  }
+}</pre>
+    </div>
+
+    <div id="cfg-vscode" class="config-panel">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.6rem">File: <code>.vscode/mcp.json</code> in your project root</p>
+      <pre>{
+  <span class="key">"servers"</span>: {
+    <span class="key">"idmc-rest-api"</span>: {
+      <span class="key">"type"</span>: <span class="str">"stdio"</span>,
+      <span class="key">"command"</span>: <span class="str">"python"</span>,
+      <span class="key">"args"</span>: [<span class="str">"C:/Softwares/idmc-rest-api_endusers/server.py"</span>]
+    }
+  }
+}</pre>
+    </div>
+
+    <div id="cfg-windsurf" class="config-panel">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.6rem">File: <code>~/.codeium/windsurf/mcp_config.json</code></p>
+      <pre>{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"idmc-rest-api"</span>: {
+      <span class="key">"command"</span>: <span class="str">"python"</span>,
+      <span class="key">"args"</span>: [<span class="str">"C:/Softwares/idmc-rest-api_endusers/server.py"</span>]
+    }
+  }
+}</pre>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- EXAMPLES -->
+<section id="examples">
+  <div class="section-title">Usage Examples</div>
+  <div class="section-sub">Type natural language — the AI picks the right tools and assembles the API calls automatically.</div>
+
+  <div class="examples-grid">
+
+    <div class="example-card">
+      <div class="example-header">
+        <span class="example-icon">🔍</span>
+        <span class="example-title">Data Profiling</span>
+        <span class="example-tag">Profiling</span>
+      </div>
+      <div class="example-body">
+        <div class="prompt-box">Profile the CUSTOMERS table on my Oracle connection and show me null percentages</div>
+        <pre><span class="cmt">// Tools called in sequence:</span>
+<span class="kw">1.</span> idmc_login         <span class="cmt">// authenticate</span>
+<span class="kw">2.</span> idmc_list_connections <span class="cmt">// find Oracle connection</span>
+<span class="kw">3.</span> idmc_get_object_fields <span class="cmt">// discover columns</span>
+<span class="kw">4.</span> idmc_create_profile   <span class="cmt">// create profile task</span>
+<span class="kw">5.</span> idmc_run_profile      <span class="cmt">// execute it</span>
+<span class="kw">6.</span> idmc_list_columns     <span class="cmt">// get null% stats</span></pre>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <span class="example-icon">👤</span>
+        <span class="example-title">User Management</span>
+        <span class="example-tag">Admin</span>
+      </div>
+      <div class="example-body">
+        <div class="prompt-box">Create a new user john@acme.com and add them to the Data Engineers group</div>
+        <pre><span class="cmt">// Tools called in sequence:</span>
+<span class="kw">1.</span> idmc_login          <span class="cmt">// authenticate</span>
+<span class="kw">2.</span> idmc_get_user_groups <span class="cmt">// find group ID</span>
+<span class="kw">3.</span> idmc_create_user    <span class="cmt">// create the user</span>
+<span class="kw">4.</span> idmc_add_users_to_group <span class="cmt">// assign group</span></pre>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <span class="example-icon">⚡</span>
+        <span class="example-title">Run a DI Task</span>
+        <span class="example-tag">Data Integration</span>
+      </div>
+      <div class="example-body">
+        <div class="prompt-box">Start the mapping task "Load_Salesforce_to_Snowflake" and monitor it</div>
+        <pre><span class="cmt">// Tools called in sequence:</span>
+<span class="kw">1.</span> idmc_login         <span class="cmt">// authenticate</span>
+<span class="kw">2.</span> idmc_list_assets   <span class="cmt">// find task by name</span>
+<span class="kw">3.</span> idmc_start_di_job  <span class="cmt">// start job (type: MTT)</span>
+<span class="kw">4.</span> idmc_get_activity_log <span class="cmt">// monitor status</span></pre>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <span class="example-icon">📅</span>
+        <span class="example-title">Create a Schedule</span>
+        <span class="example-tag">Admin</span>
+      </div>
+      <div class="example-body">
+        <div class="prompt-box">Create a daily schedule at 6 AM New York time starting tomorrow</div>
+        <pre><span class="cmt">// Tools called:</span>
+<span class="kw">1.</span> idmc_login           <span class="cmt">// authenticate</span>
+<span class="kw">2.</span> idmc_create_schedule  <span class="cmt">// schedule payload:</span>
+
+{
+  <span class="key">"name"</span>: <span class="str">"Daily 6AM NY"</span>,
+  <span class="key">"interval"</span>: <span class="str">"Daily"</span>,
+  <span class="key">"start_time"</span>: <span class="str">"2026-06-20T10:00:00Z"</span>,
+  <span class="key">"timezone"</span>: <span class="str">"America/New_York"</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <span class="example-icon">📦</span>
+        <span class="example-title">Export Assets</span>
+        <span class="example-tag">Migration</span>
+      </div>
+      <div class="example-body">
+        <div class="prompt-box">Export all mappings in project "Finance" to a ZIP file</div>
+        <pre><span class="cmt">// Tools called in sequence:</span>
+<span class="kw">1.</span> idmc_login           <span class="cmt">// authenticate</span>
+<span class="kw">2.</span> idmc_list_project_assets <span class="cmt">// find all assets</span>
+<span class="kw">3.</span> idmc_start_export_job    <span class="cmt">// kick off export</span>
+<span class="kw">4.</span> idmc_get_export_job_status <span class="cmt">// poll status</span>
+<span class="kw">5.</span> idmc_download_export_package <span class="cmt">// get ZIP</span></pre>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <span class="example-icon">🔒</span>
+        <span class="example-title">Permissions</span>
+        <span class="example-tag">Security</span>
+      </div>
+      <div class="example-body">
+        <div class="prompt-box">Give the "Analysts" group read and execute access to project "Sales_DQ"</div>
+        <pre><span class="cmt">// Tools called in sequence:</span>
+<span class="kw">1.</span> idmc_login             <span class="cmt">// authenticate</span>
+<span class="kw">2.</span> idmc_list_projects     <span class="cmt">// get project ID</span>
+<span class="kw">3.</span> idmc_create_object_permission
+
+{
+  <span class="key">"principal_type"</span>: <span class="str">"GROUP"</span>,
+  <span class="key">"principal_name"</span>: <span class="str">"Analysts"</span>,
+  <span class="key">"read"</span>: <span class="kw">true</span>, <span class="key">"execute"</span>: <span class="kw">true</span>,
+  <span class="key">"update"</span>: <span class="kw">false</span>, <span class="key">"delete"</span>: <span class="kw">false</span>
+}</pre>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- TOOLS CATALOGUE -->
+<section id="tools">
+  <div class="section-title">Tool Catalogue</div>
+  <div class="section-sub">All 151+ tools available. Search by name or description, or filter by category.</div>
+
+  <div class="tools-controls">
+    <input class="search-box" type="text" id="toolSearch" placeholder="Search tools..." oninput="filterTools()">
+    <div class="filter-btns">
+      <button class="filter-btn active" onclick="filterCat(this,'all')">All</button>
+      <button class="filter-btn" onclick="filterCat(this,'auth')">Auth</button>
+      <button class="filter-btn" onclick="filterCat(this,'connections')">Connections</button>
+      <button class="filter-btn" onclick="filterCat(this,'projects')">Projects</button>
+      <button class="filter-btn" onclick="filterCat(this,'profiling')">Profiling</button>
+      <button class="filter-btn" onclick="filterCat(this,'jobs')">Jobs</button>
+      <button class="filter-btn" onclick="filterCat(this,'admin')">Admin</button>
+      <button class="filter-btn" onclick="filterCat(this,'di')">Data Integration</button>
+      <button class="filter-btn" onclick="filterCat(this,'ingestion')">Ingestion</button>
+      <button class="filter-btn" onclick="filterCat(this,'sourcecontrol')">Source Control</button>
+    </div>
+    <span class="tool-count" id="toolCount">151 tools</span>
+  </div>
+
+  <div class="tools-grid" id="toolsGrid">
+  <!-- tools injected by JS -->
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- API VERSIONS -->
+<section id="api-versions">
+  <div class="section-title">API Versions & Regions</div>
+  <div class="section-sub">Different IDMC services use different API versions and authentication headers.</div>
+
+  <div class="region-grid">
+    <div class="region-card"><div class="region-code">us</div><div class="region-name">North America</div><div class="region-url">dm-us.informaticacloud.com</div></div>
+    <div class="region-card"><div class="region-code">eu</div><div class="region-name">Europe / EMEA</div><div class="region-url">dm-eu.informaticacloud.com</div></div>
+    <div class="region-card"><div class="region-code">ap</div><div class="region-name">Asia Pacific</div><div class="region-url">dm-ap.informaticacloud.com</div></div>
+    <div class="region-card"><div class="region-code">em</div><div class="region-name">Middle East</div><div class="region-url">dm-em.informaticacloud.com</div></div>
+  </div>
+
+  <table class="api-table">
+    <thead>
+      <tr><th>Version</th><th>Base Path</th><th>Auth Header</th><th>Used For</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="v-badge v1">v1</span></td>
+        <td><code>profiling-service/api/v1/</code></td>
+        <td><code>IDS-SESSION-ID</code></td>
+        <td>Data profiling — profiles, columns, queries, run results</td>
+      </tr>
+      <tr>
+        <td><span class="v-badge v2">v2</span></td>
+        <td><code>api/v2/</code> · <code>saas/api/v2/</code></td>
+        <td><code>icSessionId</code></td>
+        <td>DI platform, connections, jobs, agents, bundles, org management</td>
+      </tr>
+      <tr>
+        <td><span class="v-badge v3">v3</span></td>
+        <td><code>public/core/v3/</code></td>
+        <td><code>INFA-SESSION-ID</code></td>
+        <td>Licenses, object permissions, users, roles, source control, export/import</td>
+      </tr>
+      <tr>
+        <td><span class="v-badge vfrs">FRS</span></td>
+        <td><code>frs/v1/</code> · <code>frs-dqprofile</code></td>
+        <td><code>IDS-SESSION-ID</code></td>
+        <td>File Repository Service — profile exports, rule specs, mapplets</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:2rem">
+    <div class="section-title" style="font-size:1.1rem">Extending the Server</div>
+    <p style="font-size:0.87rem;color:var(--text-muted);margin-bottom:1rem">Adding a new IDMC capability is always three files:</p>
+    <pre><span class="cmt"># Step 1 — tools.py: add the tool schema</span>
+{
+  <span class="key">"name"</span>: <span class="str">"idmc_my_new_tool"</span>,
+  <span class="key">"description"</span>: <span class="str">"What it does"</span>,
+  <span class="key">"input_schema"</span>: { <span class="key">"type"</span>: <span class="str">"object"</span>, <span class="key">"properties"</span>: { ... } }
+}
+
+<span class="cmt"># Step 2 — tool_executor.py: map the name → API call</span>
+<span class="kw">elif</span> name == <span class="str">"idmc_my_new_tool"</span>:
+    <span class="kw">return</span> self.client.my_new_method(inputs.get(<span class="str">"param"</span>))
+
+<span class="cmt"># Step 3 — api_client.py: implement the HTTP call</span>
+<span class="kw">def</span> my_new_method(self, param):
+    url = <span class="str">f"</span><span class="key">{self.session.base_url}</span><span class="str">/api/v2/my-endpoint"</span>
+    <span class="kw">return</span> self._get(url, self._di_headers())</pre>
+  </div>
+</section>
+
+<footer>
+  <p>IDMC MCP Server &mdash; Open MCP standard &mdash; Works with any MCP-compatible AI assistant</p>
+  <p style="margin-top:6px">Built with Python · <a href="https://modelcontextprotocol.io" style="color:var(--primary);text-decoration:none">Model Context Protocol</a></p>
+</footer>
+
+<script>
+// ── Tool data ──────────────────────────────────────────────────────────
+const TOOLS = [
+  // Auth
+  {name:"idmc_login",desc:"Login to Informatica Intelligent Cloud Services. Must be called first before any other tool.",cat:"auth",ro:false,dest:false},
+  {name:"idmc_logout",desc:"Log out and invalidate the current session.",cat:"auth",ro:false,dest:true},
+  {name:"idmc_logout_all_sessions",desc:"Log out and end ALL active REST API sessions for the organisation.",cat:"auth",ro:false,dest:true},
+  {name:"idmc_validate_session",desc:"Check whether the current session ID is still valid and how many minutes remain.",cat:"auth",ro:true,dest:false},
+  // Connections
+  {name:"idmc_list_connections",desc:"List all connections in the organisation, or get a specific connection by ID or name.",cat:"connections",ro:true,dest:false},
+  {name:"idmc_search_connections",desc:"Search connections by type filtered by Secure Agent or runtime environment.",cat:"connections",ro:true,dest:false},
+  {name:"idmc_get_connection_objects",desc:"List source or target objects (tables/files) available in a connection.",cat:"connections",ro:true,dest:false},
+  {name:"idmc_get_object_fields",desc:"List all columns / fields in a source table or file.",cat:"connections",ro:true,dest:false},
+  {name:"idmc_create_connection",desc:"Create a new connection (Salesforce, Oracle, MySQL, CSVFile, ODBC, FTP, SFTP, etc.).",cat:"connections",ro:false,dest:false},
+  {name:"idmc_update_connection",desc:"Update an existing connection by connection ID.",cat:"connections",ro:false,dest:false},
+  {name:"idmc_delete_connection",desc:"Delete a connection by ID.",cat:"connections",ro:false,dest:true},
+  {name:"idmc_test_connection",desc:"Test whether a connection is working.",cat:"connections",ro:false,dest:false},
+  {name:"idmc_migrate_connection",desc:"Migrate assets from an old connector version to the latest version within a project.",cat:"connections",ro:false,dest:false},
+  {name:"idmc_list_connectors",desc:"List all connectors available to the organisation.",cat:"connections",ro:true,dest:false},
+  {name:"idmc_get_connector_metadata",desc:"Get attribute metadata for a specific connector type.",cat:"connections",ro:true,dest:false},
+  {name:"idmc_get_data_preview",desc:"Preview sample rows from a source or target object via a DI connection.",cat:"connections",ro:true,dest:false},
+  // Projects
+  {name:"idmc_list_projects",desc:"List all projects. Optionally filter by name. Supports pagination.",cat:"projects",ro:true,dest:false},
+  {name:"idmc_create_project",desc:"Create a new project to organise assets.",cat:"projects",ro:false,dest:false},
+  {name:"idmc_update_project",desc:"Update a project's name or description.",cat:"projects",ro:false,dest:false},
+  {name:"idmc_delete_project",desc:"Delete an empty project (must contain no assets or folders).",cat:"projects",ro:false,dest:true},
+  {name:"idmc_list_folders",desc:"List all folders inside a project.",cat:"projects",ro:true,dest:false},
+  {name:"idmc_create_folder",desc:"Create a folder inside a project.",cat:"projects",ro:false,dest:false},
+  {name:"idmc_update_folder",desc:"Update a folder's name or description.",cat:"projects",ro:false,dest:false},
+  {name:"idmc_delete_folder",desc:"Delete an empty folder.",cat:"projects",ro:false,dest:true},
+  {name:"idmc_list_assets",desc:"Find and list assets in the organisation using filters.",cat:"projects",ro:true,dest:false},
+  {name:"idmc_list_project_assets",desc:"Recursively list ALL assets inside a project including subfolders.",cat:"projects",ro:true,dest:false},
+  {name:"idmc_get_asset_dependencies",desc:"Get objects that an asset uses or objects that use the asset.",cat:"projects",ro:true,dest:false},
+  {name:"idmc_lookup_object",desc:"Look up one or more IDMC objects by path+type or by ID.",cat:"projects",ro:true,dest:false},
+  {name:"idmc_assign_tags",desc:"Assign one or more tags to assets.",cat:"projects",ro:false,dest:false},
+  {name:"idmc_remove_asset_tags",desc:"Remove one or more tags from assets.",cat:"projects",ro:false,dest:true},
+  // Profiling
+  {name:"idmc_list_profiles",desc:"List all profiles. Can filter by name, project, folder.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_profile",desc:"Get full definition of a profile by its ID.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_create_profile",desc:"Create a new data profiling task.",cat:"profiling",ro:false,dest:false},
+  {name:"idmc_update_profile",desc:"Update an existing profile definition.",cat:"profiling",ro:false,dest:false},
+  {name:"idmc_delete_profile",desc:"Permanently delete a profile and all its run history.",cat:"profiling",ro:false,dest:true},
+  {name:"idmc_run_profile",desc:"Execute / run a data profiling task by its ID.",cat:"profiling",ro:false,dest:false},
+  {name:"idmc_suggest_profile_name",desc:"Get an auto-suggested name for a new profile.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_last_successful_run_key",desc:"Return the run key of the most recent successful profile run.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_rule_spec_ports",desc:"Fetch the input and output port definitions of a Rule Specification asset.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_rule_ids",desc:"Return the unique frsRuleId and ruleId for a rule associated with a profile.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_list_columns",desc:"List all profiled columns with statistics (null%, distinct%, patterns, etc.).",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_column",desc:"Get detailed statistics for one specific column.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_column_patterns",desc:"Get inferred data patterns and their frequencies for a column.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_column_datatypes",desc:"Get inferred data types for a column.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_value_frequencies",desc:"Get top-N value frequencies (value counts) for a column.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_export_profile_results",desc:"Export profile results to Excel. Returns base64-encoded file content.",cat:"profiling",ro:false,dest:false},
+  {name:"idmc_list_run_details",desc:"List all historical runs for a profile.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_run_detail",desc:"Get detailed info about a specific profile run.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_delete_run_details",desc:"Delete one or more historical profile runs to free storage.",cat:"profiling",ro:false,dest:true},
+  {name:"idmc_get_top_n_runs",desc:"Identify the profile runs that consume the most storage space.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_top_n_profile_tasks",desc:"Identify the profile tasks that consume the most storage space.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_create_query",desc:"Create a query to filter or drill-down into profile results.",cat:"profiling",ro:false,dest:false},
+  {name:"idmc_execute_query",desc:"Run an existing query by its ID.",cat:"profiling",ro:false,dest:false},
+  {name:"idmc_get_query_results",desc:"Retrieve results from an executed query.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_list_queries",desc:"List all queries associated with a profile.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_get_query",desc:"Get full details of a specific query.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_update_query",desc:"Update an existing query.",cat:"profiling",ro:false,dest:false},
+  {name:"idmc_delete_query",desc:"Delete a query by its ID.",cat:"profiling",ro:false,dest:true},
+  {name:"idmc_get_insights",desc:"Retrieve CLAIRE AI-generated data quality insights for a profile.",cat:"profiling",ro:true,dest:false},
+  {name:"idmc_update_insights",desc:"Approve or reject CLAIRE insights recommendations.",cat:"profiling",ro:false,dest:false},
+  // Jobs (profiling)
+  {name:"idmc_get_job",desc:"Get status and step details of a profiling job by job ID.",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_get_running_jobs",desc:"Get all currently running jobs for a profile.",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_stop_job",desc:"Stop a running profiling job.",cat:"jobs",ro:false,dest:true},
+  {name:"idmc_resume_job",desc:"Resume a stopped profiling job.",cat:"jobs",ro:false,dest:false},
+  {name:"idmc_get_session_logs",desc:"Download session logs for a specific job step.",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_get_activity_log",desc:"Get completed job activity logs.",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_get_activity_monitor",desc:"Get currently running jobs from the activity monitor.",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_get_error_log",desc:"Download the error log for a specific activity log entry.",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_start_di_job",desc:"Start a Data Integration task (mapping, replication, sync, taskflow, etc.).",cat:"jobs",ro:false,dest:false},
+  {name:"idmc_stop_di_job",desc:"Stop a running Data Integration task.",cat:"jobs",ro:false,dest:true},
+  {name:"idmc_get_di_tasks",desc:"List Data Integration tasks by type (MTT, DSS, DRS, DMASK, PCS).",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_get_di_job_log_entries",desc:"Get completed DI job log entries from Operational Insights.",cat:"jobs",ro:true,dest:false},
+  {name:"idmc_get_session_log",desc:"Download the session log for a completed activity log entry.",cat:"jobs",ro:true,dest:false},
+  // Admin
+  {name:"idmc_get_users",desc:"List all users in the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_user",desc:"Get details for a specific user.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_create_user",desc:"Create a new user in the organisation.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_user",desc:"Permanently delete a user from the organisation.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_add_user_roles",desc:"Add roles to a user.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_remove_user_roles",desc:"Remove roles from a user.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_add_user_groups",desc:"Add a user to one or more user groups.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_remove_user_groups",desc:"Remove a user from one or more user groups.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_change_password",desc:"Change the currently logged-in user's password.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_reset_password",desc:"Reset a user's password using their security answer.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_get_roles",desc:"List all roles in the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_privileges",desc:"List privileges in the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_create_role",desc:"Create a new custom role with specified privileges.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_add_role_privileges",desc:"Add privileges to an existing custom role.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_remove_role_privileges",desc:"Remove privileges from a custom role.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_delete_role",desc:"Delete a custom role from the organisation.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_user_groups",desc:"List all user groups in the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_user_group",desc:"Get details for a specific user group.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_create_user_group",desc:"Create a new user group.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_add_users_to_group",desc:"Add users to a user group.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_remove_users_from_group",desc:"Remove users from a user group.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_add_roles_to_group",desc:"Add roles to a user group.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_remove_roles_from_group",desc:"Remove roles from a user group.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_delete_user_group",desc:"Delete a user group from the organisation.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_schedules",desc:"List schedules in the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_create_schedule",desc:"Create a new schedule.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_update_schedule",desc:"Update an existing schedule.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_schedule",desc:"Delete a schedule from the organisation.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_runtime_environments",desc:"List all Secure Agent runtime environments.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_create_runtime_environment",desc:"Create a new Secure Agent group (runtime environment).",cat:"admin",ro:false,dest:false},
+  {name:"idmc_update_runtime_environment",desc:"Update a Secure Agent group.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_runtime_environment",desc:"Delete a Secure Agent group by ID.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_runtime_environment_selections",desc:"Get enabled/disabled services and connectors for a Secure Agent group.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_update_runtime_environment_selections",desc:"Enable or disable services and connectors for a Secure Agent group.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_get_runtime_environment_configs",desc:"Get Secure Agent service property configurations for a group.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_update_runtime_environment_configs",desc:"Configure Secure Agent service properties for a group.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_runtime_environment_configs",desc:"Delete all group-level Secure Agent service property settings.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_secure_agents",desc:"List all Secure Agents in the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_delete_secure_agent",desc:"Delete a Secure Agent by ID.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_agent_installer_info",desc:"Get the install token and download URL for a Secure Agent installer.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_manage_secure_agent_service",desc:"Start or stop a specific Secure Agent service.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_get_organization",desc:"Get details for the current organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_organization_details",desc:"Get details for the current org or a sub-organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_update_organization",desc:"Update organisation details.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_create_sub_organization",desc:"Create a new sub-organisation.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_sub_organization",desc:"Permanently delete a sub-organisation by ID.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_update_sub_org_license",desc:"Update a sub-organisation's license.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_get_license",desc:"Get licence details for the current organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_object_permissions",desc:"Get permissions on an IICS object.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_create_object_permission",desc:"Create an ACL for a user or group on an IICS object.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_update_object_permission",desc:"Update an existing ACL on an IDMC object.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_object_permission",desc:"Delete a specific ACL or all permissions on an object.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_check_object_access",desc:"Check the current user's access rights on a specific object.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_audit_log",desc:"Get organisation audit log entries.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_security_logs",desc:"Get security log entries (login/logout, user/group/role changes).",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_trusted_ips",desc:"Get trusted IP address ranges configured for the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_update_trusted_ips",desc:"Set trusted IP address ranges and enable/disable IP filtering.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_get_key_rotation_settings",desc:"Get the current encryption key rotation interval.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_update_key_rotation_settings",desc:"Change the encryption key rotation interval.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_get_identity_providers",desc:"Get the registered identity provider(s) for an organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_register_identity_provider",desc:"Register an OIDC identity provider for JWT/OAuth login.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_update_identity_provider",desc:"Update an existing identity provider configuration.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_identity_provider",desc:"Delete the registered identity provider for an organisation.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_saml_group_mappings",desc:"Get SAML group-to-IDMC-role mappings.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_get_saml_role_mappings",desc:"Get SAML role-to-IDMC-role mappings.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_add_saml_group_mappings",desc:"Map SAML groups to IDMC roles for SSO group-based access.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_add_saml_role_mappings",desc:"Map SAML roles to IDMC roles for SSO role-based access.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_remove_saml_group_mappings",desc:"Remove SAML group-to-IDMC-role mappings.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_remove_saml_role_mappings",desc:"Remove SAML role-to-IDMC-role mappings.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_list_scim_tokens",desc:"List SCIM tokens created for the organisation.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_create_scim_token",desc:"Create a new SCIM 2.0 token.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_delete_scim_token",desc:"Delete a SCIM token by token ID.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_bundle",desc:"Get bundle details by bundle ID or name.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_install_bundle",desc:"Install a bundle on the organisation.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_uninstall_bundle",desc:"Uninstall a bundle from the organisation.",cat:"admin",ro:false,dest:true},
+  {name:"idmc_get_server_time",desc:"Get the current IICS server time.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_start_metering_export",desc:"Start a metering data export job.",cat:"admin",ro:false,dest:false},
+  {name:"idmc_get_metering_export_status",desc:"Get the status of a metering data export job.",cat:"admin",ro:true,dest:false},
+  {name:"idmc_download_metering_data",desc:"Download the metering data ZIP file.",cat:"admin",ro:false,dest:false},
+  // DI
+  {name:"idmc_list_mappings",desc:"List all mappings in the organisation.",cat:"di",ro:true,dest:false},
+  {name:"idmc_get_mapping",desc:"Get details of a mapping by ID or name.",cat:"di",ro:true,dest:false},
+  {name:"idmc_get_mapping_transformations",desc:"Get advanced transformation properties for a mapping.",cat:"di",ro:true,dest:false},
+  {name:"idmc_list_mapping_tasks",desc:"List all mapping tasks in the organisation.",cat:"di",ro:true,dest:false},
+  {name:"idmc_get_mapping_task",desc:"Get details of a mapping task by ID or name.",cat:"di",ro:true,dest:false},
+  {name:"idmc_create_mapping_task",desc:"Create a new mapping task based on an existing mapping.",cat:"di",ro:false,dest:false},
+  {name:"idmc_update_mapping_task",desc:"Update an existing mapping task.",cat:"di",ro:false,dest:false},
+  {name:"idmc_delete_mapping_task",desc:"Delete a mapping task by task ID.",cat:"di",ro:false,dest:true},
+  {name:"idmc_list_linear_taskflows",desc:"List all linear taskflows in the organisation.",cat:"di",ro:true,dest:false},
+  {name:"idmc_get_linear_taskflow",desc:"Get details of a linear taskflow.",cat:"di",ro:true,dest:false},
+  {name:"idmc_create_linear_taskflow",desc:"Create a new linear taskflow containing a sequence of DI tasks.",cat:"di",ro:false,dest:false},
+  {name:"idmc_update_linear_taskflow",desc:"Update an existing linear taskflow.",cat:"di",ro:false,dest:false},
+  {name:"idmc_delete_linear_taskflow",desc:"Delete a linear taskflow by ID.",cat:"di",ro:false,dest:true},
+  {name:"idmc_get_taskflow_status",desc:"Get the execution status of a published taskflow run.",cat:"di",ro:true,dest:false},
+  {name:"idmc_publish_taskflows",desc:"Publish one or more advanced taskflows in bulk.",cat:"di",ro:false,dest:false},
+  {name:"idmc_unpublish_taskflows",desc:"Unpublish one or more advanced taskflows in bulk.",cat:"di",ro:false,dest:false},
+  {name:"idmc_validate_expression",desc:"Validate a Data Integration expression against a source object.",cat:"di",ro:true,dest:false},
+  {name:"idmc_list_fwconfigs",desc:"List all fixed-width format configurations.",cat:"di",ro:true,dest:false},
+  {name:"idmc_get_fwconfig",desc:"Get a fixed-width format configuration by ID or name.",cat:"di",ro:true,dest:false},
+  {name:"idmc_create_fwconfig",desc:"Create a fixed-width format configuration for flat file sources/targets.",cat:"di",ro:false,dest:false},
+  {name:"idmc_delete_fwconfig",desc:"Delete a fixed-width format configuration by ID.",cat:"di",ro:false,dest:true},
+  {name:"idmc_list_pc_mapplets",desc:"List all PowerCenter mapplets in the organisation.",cat:"di",ro:true,dest:false},
+  {name:"idmc_get_pc_mapplet",desc:"Get details of a PowerCenter mapplet.",cat:"di",ro:true,dest:false},
+  {name:"idmc_delete_pc_mapplet",desc:"Delete a PowerCenter mapplet by ID.",cat:"di",ro:false,dest:true},
+  {name:"idmc_start_export_job",desc:"Start an export job to package IDMC assets into a ZIP file.",cat:"di",ro:false,dest:false},
+  {name:"idmc_get_export_job_status",desc:"Get the status of an export job.",cat:"di",ro:true,dest:false},
+  {name:"idmc_download_export_package",desc:"Download the export ZIP package once the job is successful.",cat:"di",ro:false,dest:false},
+  {name:"idmc_upload_import_package",desc:"Upload an export ZIP file to prepare it for import.",cat:"di",ro:false,dest:false},
+  {name:"idmc_start_import_job",desc:"Start an import job.",cat:"di",ro:false,dest:false},
+  {name:"idmc_get_import_job_status",desc:"Get the status of an import job.",cat:"di",ro:true,dest:false},
+  {name:"idmc_start_fetch_state",desc:"Start a fetchState job to capture object states for migration.",cat:"di",ro:false,dest:false},
+  {name:"idmc_get_fetch_state_status",desc:"Get the status of a fetchState job.",cat:"di",ro:true,dest:false},
+  {name:"idmc_download_object_states",desc:"Download the object states ZIP from a completed fetchState job.",cat:"di",ro:false,dest:false},
+  {name:"idmc_upload_load_state_package",desc:"Upload an object states ZIP to prepare for loadState.",cat:"di",ro:false,dest:false},
+  {name:"idmc_start_load_state",desc:"Start a loadState job to synchronise object states.",cat:"di",ro:false,dest:false},
+  {name:"idmc_get_load_state_status",desc:"Get the status of a loadState job.",cat:"di",ro:true,dest:false},
+  // Ingestion
+  {name:"idmc_create_ingestion_task",desc:"Create a database (DBMI) or application (APPMI) ingestion and replication task.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_get_ingestion_task_id",desc:"Look up an ingestion task's numeric ID by task name.",cat:"ingestion",ro:true,dest:false},
+  {name:"idmc_deploy_ingestion_task",desc:"Deploy an ingestion task by numeric task ID.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_get_ingestion_task_details",desc:"Get full task definition details for ingestion tasks.",cat:"ingestion",ro:true,dest:false},
+  {name:"idmc_start_ingestion_job",desc:"Start an ingestion job by job ID.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_stop_ingestion_job",desc:"Stop a running ingestion job.",cat:"ingestion",ro:false,dest:true},
+  {name:"idmc_resume_ingestion_job",desc:"Resume a stopped/failed ingestion job.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_undeploy_ingestion_job",desc:"Undeploy an ingestion job.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_get_ingestion_job_status",desc:"Get the current status of an ingestion job.",cat:"ingestion",ro:true,dest:false},
+  {name:"idmc_get_ingestion_job_metrics",desc:"Get detailed statistics and per-table metrics for an ingestion job.",cat:"ingestion",ro:true,dest:false},
+  {name:"idmc_run_mi_task_job",desc:"Run a file ingestion and replication (MI) task job.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_get_mi_task_job_status",desc:"Get the status of a running or completed file ingestion job.",cat:"ingestion",ro:true,dest:false},
+  {name:"idmc_get_mi_activity_log",desc:"Get the activity log for file ingestion and replication jobs.",cat:"ingestion",ro:true,dest:false},
+  {name:"idmc_list_mi_tasks",desc:"List all file ingestion and replication (MI) tasks.",cat:"ingestion",ro:true,dest:false},
+  {name:"idmc_create_mi_task",desc:"Create a file ingestion and replication (MI) task.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_update_mi_task",desc:"Update an existing file ingestion and replication (MI) task.",cat:"ingestion",ro:false,dest:false},
+  {name:"idmc_delete_mi_task",desc:"Delete a file ingestion and replication (MI) task.",cat:"ingestion",ro:false,dest:true},
+  // Source Control
+  {name:"idmc_pull_objects",desc:"Pull objects from the source control repository into the IDMC org.",cat:"sourcecontrol",ro:false,dest:false},
+  {name:"idmc_checkout_objects",desc:"Check out source-controlled objects so they can be edited.",cat:"sourcecontrol",ro:false,dest:false},
+  {name:"idmc_checkin_objects",desc:"Check updated objects in to the source control repository.",cat:"sourcecontrol",ro:false,dest:false},
+  {name:"idmc_undo_checkout",desc:"Undo a source control checkout.",cat:"sourcecontrol",ro:false,dest:false},
+  {name:"idmc_compare_object_versions",desc:"Compare two versions of a source-controlled asset.",cat:"sourcecontrol",ro:true,dest:false},
+  {name:"idmc_get_commit_details",desc:"Get details about a specific source control commit.",cat:"sourcecontrol",ro:true,dest:false},
+  {name:"idmc_get_commit_history",desc:"Get source control commit history for all objects or a specific asset.",cat:"sourcecontrol",ro:true,dest:false},
+  {name:"idmc_get_source_control_action_status",desc:"Get the status of a source control operation.",cat:"sourcecontrol",ro:true,dest:false},
+];
+
+// ── Render tools ──────────────────────────────────────────────────────
+const catLabels = {auth:'Auth',connections:'Connections',projects:'Projects / Assets',profiling:'Profiling',jobs:'Jobs',admin:'Admin',di:'Data Integration',ingestion:'Ingestion',sourcecontrol:'Source Control'};
+let currentCat = 'all';
+
+function renderTools(list) {
+  const grid = document.getElementById('toolsGrid');
+  grid.innerHTML = list.map(t => {
+    const badges = [];
+    if (t.ro) badges.push('<span class="badge badge-read">Read-only</span>');
+    else badges.push('<span class="badge badge-write">Write</span>');
+    if (t.dest) badges.push('<span class="badge badge-destructive">Destructive</span>');
+    badges.push(`<span class="badge badge-cat">${catLabels[t.cat]||t.cat}</span>`);
+    return `<div class="tool-card" data-cat="${t.cat}" data-name="${t.name}" data-desc="${t.desc}">
+      <div class="tool-name">${t.name}</div>
+      <div class="tool-desc">${t.desc}</div>
+      <div class="tool-badges">${badges.join('')}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('toolCount').textContent = `${list.length} tools`;
+}
+
+function filterTools() {
+  const q = document.getElementById('toolSearch').value.toLowerCase();
+  const filtered = TOOLS.filter(t => {
+    const matchCat = currentCat === 'all' || t.cat === currentCat;
+    const matchQ = !q || t.name.includes(q) || t.desc.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+  renderTools(filtered);
+}
+
+function filterCat(btn, cat) {
+  currentCat = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterTools();
+}
+
+// ── Config tabs ───────────────────────────────────────────────────────
+function showConfig(id) {
+  document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.config-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('cfg-' + id).classList.add('active');
+}
+
+// init
+renderTools(TOOLS);
+</script>
+</body>
+</html>
