@@ -1937,7 +1937,7 @@ class InformaticaAPIClient:
         url = self._frs_url(
             f"saas/api/v2/connection/{direction}/{di_id}/datapreview/{object_name}"
         )
-        params = {"numRows": num_rows}
+        params = {"numRows": num_rows, "startRowNum": 1}
         resp = requests.get(url, headers=self._di_headers(), params=params)
         return self._check(resp)
 
