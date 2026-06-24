@@ -240,7 +240,7 @@ TOOLS = [
             "properties": {
                 "name": {"type": "string", "description": "Profile name"},
                 "description": {"type": "string"},
-                "connection_id": {"type": "string", "description": "Source connection federatedId (not the DI connection ID). Use the federatedId field from idmc_list_connections."},
+                "connection_id": {"type": "string", "description": "Connection ID — pass either the org-prefixed ID (e.g. 010WXI0B...) from idmc_list_connections or the federatedId. The server resolves the federatedId automatically."},
                 "frs_project_id": {"type": "string", "description": "Project ID to store profile in"},
                 "frs_folder_id": {"type": "string", "description": "Optional folder ID"},
                 "source_name": {"type": "string", "description": "Table or file to profile"},

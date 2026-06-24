@@ -100,6 +100,19 @@ def _build_create_profile_payload(inputs: dict) -> dict:
         "sourceType": "DATASOURCE",
         "properties": source_properties,
     }
+    if not is_flatfile:
+        source_obj["advancedOptions"] = {
+            "Apply Custom Schema": "true" if schema else "false",
+            "Schema Name": schema if schema else "",
+            "Pre SQL": "",
+            "Post SQL": "",
+            "Sql Override": "",
+            "Table Name": "",
+            "Source Type": "Table",
+            "Tracing Level": "Normal",
+            "Output is Deterministic": "false",
+            "Output is Repeatable": "",
+        }
 
     payload: dict = {
         "name": inputs["name"],
