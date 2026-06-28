@@ -1407,6 +1407,7 @@ class ToolExecutor:
                 "port": "port", "database": "database", "schema": "schema",
                 "service_url": "serviceUrl", "security_token": "securityToken",
                 "authentication_type": "authenticationType", "codepage": "codepage",
+                "date_format": "dateFormat",
             }
             for py_key, api_key in field_map.items():
                 if inp.get(py_key) is not None:

@@ -1839,7 +1839,7 @@ TOOLS = [
         "input_schema": {"type": "object", "properties": {}},
         "annotations": {
             "read_only": False,
-            "destructive": True,
+            "destructive": False,
             "idempotent": False,
         },
     },
@@ -2353,7 +2353,7 @@ TOOLS = [
         },
         "annotations": {
             "read_only": False,
-            "destructive": True,
+            "destructive": False,
             "idempotent": False,
         },
     },
@@ -2467,7 +2467,7 @@ TOOLS = [
         },
         "annotations": {
             "read_only": False,
-            "destructive": False,
+            "destructive": True,
             "idempotent": False,
         },
     },
@@ -3384,7 +3384,7 @@ TOOLS = [
     },
     {
         "name": "idmc_checkout_objects",
-        "description": "Check out source-controlled objects so they can be edited (locks them).",
+        "description": "Check out source-controlled objects so they can be edited (locks them). Marks objects as checked out by you — others cannot edit until checked in or undone.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -3405,7 +3405,7 @@ TOOLS = [
         },
         "annotations": {
             "read_only": False,
-            "destructive": False,
+            "destructive": True,
             "idempotent": False,
         },
     },
@@ -3460,7 +3460,7 @@ TOOLS = [
         },
         "annotations": {
             "read_only": False,
-            "destructive": False,
+            "destructive": True,
             "idempotent": False,
         },
     },
@@ -3564,6 +3564,7 @@ TOOLS = [
                 "security_token":         {"type": "string", "description": "Security token for Salesforce connections."},
                 "authentication_type":    {"type": "string", "description": "Auth type for MSD (LIVE/IFD/AD), SQL Server (Windows/SqlServer), Web Service (Auto/Basic/Digest/NTLM), ODBC (Database/Kerberos)."},
                 "codepage":               {"type": "string", "description": "Code page e.g. UTF-8, MS1252. Required for Oracle, MySQL, SQL Server, flat file, FTP/SFTP, SAP connections."},
+                "date_format":            {"type": "string", "description": "Date format for flat file connections e.g. MM/dd/yyyy HH:mm:ss."},
                 "conn_params":            {"type": "object", "description": "Additional connector-specific attributes (SAP, NetSuite, ODBC subtypes, etc.). Enclosed in connParams in the request."},
             },
             "required": ["name", "type"],
@@ -4352,7 +4353,7 @@ TOOLS = [
         },
         "annotations": {
             "read_only": False,
-            "destructive": False,
+            "destructive": True,
             "idempotent": False,
         },
     },
